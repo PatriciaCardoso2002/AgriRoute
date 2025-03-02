@@ -1,0 +1,68 @@
+# Python Ignore Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.DS_Store
+
+# Virtual Environments
+**/venv/
+**/.venv/
+env/
+Pipfile
+Pipfile.lock
+poetry.lock
+
+# Logs & Debugging
+**/logs/
+*.log
+*.out
+*.err
+debug.log
+nohup.out
+
+# FastAPI & Uvicorn
+*.db
+*.sqlite3
+*.sqlite
+instance/
+*.pid
+
+# Configuration & Secrets
+.env.*
+**/config/*.ini
+**/config/*.json
+**/config/*.yaml
+
+# Cache & Compiled Files
+**/__pycache__/
+**/app/__pycache__/
+**/tests/__pycache__/
+**/app/models/__pycache__/
+**/app/routes/__pycache__/
+**/app/utils/__pycache__/
+
+# IDE / Editor Specific Files
+.vscode/
+.idea/
+*.iml
+
+# Docker & Deployment
+docker-compose.yml
+Dockerfile
+*.dockerignore
+*.dockerenv
+
+# Static & Temp Files
+**/app/static/*
+!**/app/static/.keep
+**/app/media/*
+!**/app/media/.keep
+
+# Test & Coverage
+**/tests/__pycache__/
+**/tests/results/
+.coverage
+htmlcov/
