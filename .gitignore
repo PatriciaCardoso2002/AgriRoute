@@ -31,6 +31,7 @@ instance/
 *.pid
 
 # Configuration & Secrets
+.env
 .env.*
 **/config/*.ini
 **/config/*.json
