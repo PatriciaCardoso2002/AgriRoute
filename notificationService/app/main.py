@@ -3,11 +3,11 @@ from fastapi.responses import JSONResponse
 from app.models import Notification, ErrorResponse, SuccessResponse, NotificationListResponse
 from app.email_service import send_email
 
-
 app = FastAPI(
     title="Notification Email API",  
     description="API for sending email notifications.",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/api/docs",      
 )
 
 router = APIRouter(prefix="/v1/notifications", tags=["Email Notifications"])
