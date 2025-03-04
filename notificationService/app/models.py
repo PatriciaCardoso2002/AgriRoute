@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import List
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
@@ -25,6 +25,12 @@ class Notification(BaseModel):
     event_date: datetime
     warehouse: str
     is_pickup: bool  # True = Pickup, False = Delivery
+
+    @validator("event_date")
+    def validate_event_date(cls, value):
+        if value < datetime.now():
+            raise ValueError("Event date cannot be in the past.")
+        return value
 
     class Config:
         schema_extra = {
