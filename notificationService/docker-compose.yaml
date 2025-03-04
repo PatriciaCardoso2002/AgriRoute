@@ -1,7 +1,7 @@
 services:
-  postgresql:
+  postgres:
     image: postgres:latest
-    container_name: postgresql
+    container_name: postgres
     restart: unless-stopped
     env_file:
       - .env
@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgres/data
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "localhost", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       start_period: 10s
@@ -28,7 +28,7 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgresql: 
+      postgres: 
         condition: service_healthy
     networks:
       - all

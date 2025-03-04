@@ -1,7 +1,11 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Query, Depends
 from fastapi.responses import JSONResponse
-from app.models import Notification, ErrorResponse, SuccessResponse, NotificationListResponse
+from sqlalchemy.orm import Session
+from app.config import SessionLocal, init_db
+from app.models import Notification, ErrorResponse, SuccessResponse, NotificationListResponse, NotificationDB
 from app.email_service import send_email
+
+init_db()
 
 app = FastAPI(
     title="Notification Email API",  
@@ -12,7 +16,12 @@ app = FastAPI(
 
 router = APIRouter(prefix="/v1/notifications", tags=["Email Notifications"])
 
-notifications_db = []
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @router.post(
     "/",
@@ -80,7 +89,7 @@ notifications_db = []
         }
     }
 )
-def create_notification(notification: Notification):
+def create_notification(notification: Notification, db: Session = Depends(get_db)):
     """ Sends an email notification """
     send_email(notification)
     action = "Pickup" if notification.is_pickup else "Delivery"
@@ -89,16 +98,20 @@ def create_notification(notification: Notification):
         f"{'left' if notification.is_pickup else 'arrived at'} {notification.warehouse} "
         f"on {notification.event_date.strftime('%A (%d/%m/%Y) at %H:%M')}."
     )
-    notifications_db.append({
-        "email": notification.email,
-        "product_name": notification.product_name,
-        "quantity": notification.quantity,
-        "event_date": notification.event_date,
-        "warehouse": notification.warehouse,
-        "is_pickup": notification.is_pickup,
-        "subject": f"{notification.product_name} {action}",
-        "message": status_message
-    })
+    new_notification = NotificationDB(
+        email=notification.email,
+        product_name=notification.product_name,
+        quantity=notification.quantity,
+        event_date=notification.event_date,
+        warehouse=notification.warehouse,
+        is_pickup=notification.is_pickup,
+        subject=f"{notification.product_name} {action}",
+        message=status_message
+    )
+
+    db.add(new_notification)
+    db.commit()
+    db.refresh(new_notification)
     return SuccessResponse(status="success", message=f"{action} email sent to {notification.email}")
 
 @router.get(
@@ -139,28 +152,23 @@ def create_notification(notification: Notification):
 )
 def list_notifications(
     page: int = Query(1, ge=1, description="Page number (1-based index)"),
-    size: int = Query(10, ge=1, le=100, description="Number of notifications per page (max: 100)")
+    size: int = Query(10, ge=1, le=100, description="Number of notifications per page (max: 100)"),
+    db: Session = Depends(get_db)
 ):
     """Returns paginated list of sent notifications"""
-
-    if not notifications_db:
-        raise HTTPException(
-            status_code=404,
-            detail="No notifications have been sent yet."
-        )
-
-    start_index = (page - 1) * size
-    end_index = start_index + size
-    paginated_notifications = notifications_db[start_index:end_index]
-
+    total = db.query(NotificationDB).count()
+    if total == 0:
+        raise HTTPException(status_code=404, detail="No notifications have been sent yet.")
+    
+    notifications = db.query(NotificationDB).offset((page - 1) * size).limit(size).all()
+    
     return {
         "status": "success",
-        "total": len(notifications_db),
-        "notifications": paginated_notifications,
+        "total": total,
+        "notifications": notifications,
         "page": page,
         "size": size
     }
-
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

@@ -1,6 +1,21 @@
 from pydantic import BaseModel, EmailStr
 from typing import List
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from app.config import Base 
+
+class NotificationDB(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True, nullable=False)
+    product_name = Column(String, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    event_date = Column(DateTime, nullable=False)
+    warehouse = Column(String, nullable=False)
+    is_pickup = Column(Boolean, nullable=False)
+    subject = Column(String, nullable=False)
+    message = Column(String, nullable=False)
 
 class Notification(BaseModel):
     """Model for notifying about product movements (pickup or delivery)"""

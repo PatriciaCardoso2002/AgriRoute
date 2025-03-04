@@ -18,7 +18,6 @@ Acesse a documentação da API em:
 
 ## 🛠️ To-Do
 
-- Implementar testes no `test_api.py`
 - Adicionar banco de dados
 
 
