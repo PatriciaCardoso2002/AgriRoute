@@ -14,7 +14,7 @@ uvicorn app.main:app --reload
 ### 📄 Documentação Swagger
 Acesse a documentação da API em:
 
-🔗 [Swagger UI](http://0.0.0.0:8000/api/docs)
+🔗 [Swagger UI](http://0.0.0.0:8080/api/docs)
 
 ## 🛠️ To-Do
 
