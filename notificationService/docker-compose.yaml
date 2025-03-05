@@ -23,7 +23,7 @@ services:
       - all
     
   api:
-    build: .  # 🔹 This tells Docker how to build the API service
+    build: .  
     container_name: fastapi_service
     ports:
       - "8080:8080"

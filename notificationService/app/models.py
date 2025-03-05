@@ -1,59 +1,76 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, root_validator
 from typing import List
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from typing import Literal
 from app.config import Base 
+import re
 
 class NotificationDB(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, index=True, nullable=False)
-    product_name = Column(String, nullable=False)
-    quantity = Column(Integer, nullable=False)
-    event_date = Column(DateTime, nullable=False)
-    warehouse = Column(String, nullable=False)
-    is_pickup = Column(Boolean, nullable=False)
-    subject = Column(String, nullable=False)
-    message = Column(String, nullable=False)
-
+    recipient = Column(String, index=True, nullable=False)  # email, telefone ou user_id
+    title = Column(String, nullable=False)
+    body = Column(String, nullable=False)
+    delivery_method = Column(String, nullable=False)
+    notification_type = Column(String, nullable=False)
 class Notification(BaseModel):
-    """Model for notifying about product movements (pickup or delivery)"""
-    email: EmailStr
-    product_name: str
-    quantity: int
-    event_date: datetime
-    warehouse: str
-    is_pickup: bool  # True = Pickup, False = Delivery
+    """Model for sending notifications (email, SMS, push)"""
+    recipient: str
+    title: str
+    body: str
+    delivery_method: str  # "email", "sms", "push"
+    notification_type: str  # "collection_status", "payment_update"
 
-    @validator("event_date")
-    def validate_event_date(cls, value):
-        if value < datetime.now():
-            raise ValueError("Event date cannot be in the past.")
-        return value
+    @root_validator(pre=True)
+    def validate_recipient(cls, values):
+        """
+        Validate recipient based on delivery method:
+        - If email, ensure recipient is a valid email.
+        - If SMS, ensure recipient is a valid phone number.
+        - If push notification, ensure recipient is a valid user identifier.
+        """
+        recipient = values.get("recipient")
+        delivery_method = values.get("delivery_method")
+
+        if not delivery_method:
+            raise ValueError("Delivery method is required")
+
+        if delivery_method == "email":
+            if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", recipient):
+                raise ValueError("Invalid email format for email delivery method")
+
+        elif delivery_method == "sms":
+            if not re.fullmatch(r"^\+?[1-9]\d{1,14}$", recipient):
+                raise ValueError("Invalid phone number format for SMS delivery method. Use E.164 format (e.g., +1234567890)")
+
+        elif delivery_method == "push":
+            if not recipient.strip():
+                raise ValueError("Recipient cannot be empty for push notifications")
+
+        else:
+            raise ValueError("Invalid delivery method. Choose 'email', 'sms', or 'push'.")
+
+        return values  
 
     class Config:
         schema_extra = {
             "example": {
-                "email": "user1@example.com",
-                "subject": "🚛 Pickup Notification: Product 1",
-                "message": (
-                    "Dear Supplier,\n\n"
-                    "Your product **Tomatoes** (Quantity: 100) "
-                    "is scheduled for pickup from **Warehouse A** on Tuesday (05/03/2025) at 15:00.\n\n"
-                    "If there are any changes, please contact us.\n\n"
-                    "Best regards,\nAgriRoute"
-                )
+                "recipient": "user@example.com",
+                "title": "🚛 Pickup Notification",
+                "body": "Your product **Tomatoes** (Quantity: 100) was picked up from Warehouse A.",
+                "delivery_method": "email",
+                "notification_type": "collection_status"
             }
         }
 
-
 class NotificationListResponse(BaseModel):
     """Modelo para resposta estruturada da listagem de notificações"""
-    status: str
     total: int
     notifications: List[Notification]
-
+    page: int
+    size: int
     class Config:
         schema_extra = {
             "example": {
@@ -89,12 +106,14 @@ class NotificationListResponse(BaseModel):
 class SuccessResponse(BaseModel):
     status: str
     message: str
+    notification_type: str  
 
     class Config:
         schema_extra = {
             "example": {
                 "status": "success",
-                "message": "Email sent successfully to user@example.com"
+                "message": "Email sent successfully to user@example.com",
+                "notification_type": "payment_update"
             }
         }
 

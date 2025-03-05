@@ -3,15 +3,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.config import SessionLocal, init_db
 from app.models import Notification, ErrorResponse, SuccessResponse, NotificationListResponse, NotificationDB
-from app.email_service import send_email
+from app.service import send_email, send_sms, send_push_notification
 
 init_db()
 
 app = FastAPI(
-    title="Notification Email API",  
-    description="API for sending email notifications.",
+    title="Notification API",  
+    description="API for sending email/sms/push notifications.",
     version="1.0.0",
-    docs_url="/api/docs",      
+    docs_url="/api/docs"
 )
 
 router = APIRouter(prefix="/v1/notifications", tags=["Email Notifications"])
@@ -29,18 +29,19 @@ def get_db():
     response_model=SuccessResponse,  
     responses={
         201: {
-            "description": "Email sent successfully",
+            "description": "Notification sent successfully",
             "content": {
                 "application/json": {
                     "example": {
                         "status": "success",
-                        "message": "Email sent successfully to user@example.com"
+                        "message": "Notification sent successfully to user@example.com via email",
+                        "notification_type": "payment_update"
                     }
                 }
             }
         },
         400: {
-            "description": "Bad Request",
+            "description": "Bad Request - Invalid Input",
             "model": ErrorResponse,
             "content": {
                 "application/json": {
@@ -50,6 +51,22 @@ def get_db():
                             "type": "ValidationError",
                             "code": 400,
                             "trace_id": "ERR400-XYZ"
+                        }
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Unprocessable Entity - Missing Required Fields",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "message": "Missing required fields: recipient, delivery_method",
+                            "type": "ValidationError",
+                            "code": 422,
+                            "trace_id": "ERR422-XYZ"
                         }
                     }
                 }
@@ -90,29 +107,40 @@ def get_db():
     }
 )
 def create_notification(notification: Notification, db: Session = Depends(get_db)):
-    """ Sends an email notification """
-    send_email(notification)
-    action = "Pickup" if notification.is_pickup else "Delivery"
-    status_message = (
-        f"{notification.quantity} units of {notification.product_name} "
-        f"{'left' if notification.is_pickup else 'arrived at'} {notification.warehouse} "
-        f"on {notification.event_date.strftime('%A (%d/%m/%Y) at %H:%M')}."
-    )
+    """ Sends a notification (email, SMS, push) based on recipient's preferences. """
     new_notification = NotificationDB(
-        email=notification.email,
-        product_name=notification.product_name,
-        quantity=notification.quantity,
-        event_date=notification.event_date,
-        warehouse=notification.warehouse,
-        is_pickup=notification.is_pickup,
-        subject=f"{notification.product_name} {action}",
-        message=status_message
+        recipient=notification.recipient,
+        title=notification.title,
+        body=notification.body,
+        delivery_method=notification.delivery_method,
+        notification_type=notification.notification_type
     )
 
-    db.add(new_notification)
-    db.commit()
-    db.refresh(new_notification)
-    return SuccessResponse(status="success", message=f"{action} email sent to {notification.email}")
+    try:
+        db.add(new_notification)
+        db.commit()  
+        db.refresh(new_notification)
+
+        if notification.delivery_method == "email":
+            send_email(notification.recipient, notification.title, notification.body)
+        elif notification.delivery_method == "sms":
+            send_sms(notification.recipient, notification.body)
+        elif notification.delivery_method == "push":
+            send_push_notification(notification.recipient, notification.body)
+        else:
+            db.rollback()  
+            raise HTTPException(status_code=400, detail="Invalid delivery method")
+
+    except Exception as e:
+        db.rollback()  
+        raise HTTPException(status_code=500, detail=f"Notification not sent: {str(e)}")
+
+    return SuccessResponse(
+        status="success", 
+        message=f"Notification sent to {notification.recipient} via {notification.delivery_method}",
+        notification_type=notification.notification_type
+    )
+
 
 @router.get(
     "/",
@@ -120,7 +148,7 @@ def create_notification(notification: Notification, db: Session = Depends(get_db
     status_code=200,
     responses={
         200: {
-            "description": "List of sent email notifications with pagination",
+            "description": "List of sent notifications with pagination",
             "content": {
                 "application/json": {
                     "example": {
@@ -128,14 +156,18 @@ def create_notification(notification: Notification, db: Session = Depends(get_db
                         "total": 2,
                         "notifications": [
                             {
-                                "email": "user1@example.com",
-                                "subject": "🚛 Pickup Notification: Tomatoes",
-                                "message": "Your product **Tomatoes** (Quantity: 100) was picked up from **Warehouse A** on Tuesday (05/03/2025) at 15:00."
+                                "recipient": "user1@example.com",
+                                "title": "🚛 Pickup Notification",
+                                "body": "Your product **Tomatoes** (Quantity: 100) was picked up from **Warehouse A** on Tuesday (05/03/2025) at 15:00.",
+                                "delivery_method": "email",
+                                "notification_type": "collection_status"
                             },
                             {
-                                "email": "user2@example.com",
-                                "subject": "📦 Delivery Notification: Potatoes",
-                                "message": "Your product **Potatoes** (Quantity: 200) was delivered to **Warehouse B** on Wednesday (06/03/2025) at 09:30."
+                                "recipient": "user2@example.com",
+                                "title": "💰 Payment Confirmation",
+                                "body": "Dear Customer,\n\nYour payment of **$200** for the recent order has been successfully processed on **Wednesday (06/03/2025) at 09:30**.\n\nIf you have any questions, please contact our support team.\n\nBest regards,\nAgriRoute",
+                                "delivery_method": "sms",
+                                "notification_type": "payment_update"
                             }
                         ],
                         "page": 1,
@@ -146,24 +178,39 @@ def create_notification(notification: Notification, db: Session = Depends(get_db
         },
         404: {
             "description": "No notifications found",
-            "model": ErrorResponse
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "message": "No notifications have been sent yet.",
+                            "type": "NotFoundError",
+                            "code": 404,
+                            "trace_id": "ERR404-XYZ"
+                        }
+                    }
+                }
+            }
         }
     }
 )
 def list_notifications(
-    page: int = Query(1, ge=1, description="Page number (1-based index)"),
-    size: int = Query(10, ge=1, le=100, description="Number of notifications per page (max: 100)"),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    delivery_method: str = Query(None, description="Filter by delivery method"),
     db: Session = Depends(get_db)
 ):
-    """Returns paginated list of sent notifications"""
-    total = db.query(NotificationDB).count()
-    if total == 0:
-        raise HTTPException(status_code=404, detail="No notifications have been sent yet.")
-    
-    notifications = db.query(NotificationDB).offset((page - 1) * size).limit(size).all()
-    
+    """ Returns paginated list of sent notifications """
+
+    query = db.query(NotificationDB)
+
+    if delivery_method:
+        query = query.filter(NotificationDB.delivery_method == delivery_method)
+
+    total = query.count()
+    notifications = query.offset((page - 1) * size).limit(size).all()
+
     return {
-        "status": "success",
         "total": total,
         "notifications": notifications,
         "page": page,
