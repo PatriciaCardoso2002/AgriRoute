@@ -1,11 +1,12 @@
 import React from 'react';
-import "./../styles/logo.css";
+import logoImage from "./../images/logo.png"; 
+import './../styles/logo.css';
 
 function Logo() {
   return (
-    <h1 className="logo">
-      AgriRoute
-    </h1>
+    <div className="logo">
+      <img src={logoImage} alt="AgriRoute Logo" />
+    </div>
   );
 }
 
