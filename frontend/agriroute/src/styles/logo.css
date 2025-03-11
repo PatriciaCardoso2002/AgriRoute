@@ -1,22 +1,12 @@
-/* Styling for AgriRoute Logo */
-.logo {
+/* Ensure the logo is on the far left of the navbar */
+.navbar-brand {
   display: flex;
   align-items: center;
-  font-size: 2.5rem; /* Big and prominent text */
-  font-family: 'Poppins', sans-serif; /* Use Google Fonts */
-  font-weight: 700; /* Bold font weight */
-  color: #2d9030;  /* Fresh green color */
-  letter-spacing: 2px; /* Space out the letters */
-  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Soft shadow for depth */
-  margin: 0; /* Remove default margin */
+  padding: 0;  /* Remove any default padding */
+  margin-left: 0; /* Ensure no left margin */
 }
 
-.logo i {
-  margin-right: 10px; /* Space between icon and text if you add one */
-}
-
-@media (max-width: 768px) {
-  .logo {
-    font-size: 2.5rem; /* Slightly smaller on mobile */
-  }
+.navbar img {
+  width: 80px;  /* Adjust the width of the logo */
+  height: auto;  /* Maintain the aspect ratio */
 }
