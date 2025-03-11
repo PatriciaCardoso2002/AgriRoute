@@ -4,7 +4,11 @@ import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BookingsModule } from './bookings/bookings.module';
-import { join } from 'path';
+// import { join } from 'path';
+import { ClientsModule } from './clients/clients.module';
+import { Client } from './clients/entities/client.entity';
+import { Booking } from './bookings/entities/booking.entity';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -21,11 +25,14 @@ import { join } from 'path';
         database: configService.get('DB_NAME'),
         logging: true,
         synchronize: true, // ?? 
-        entities: [join(process.cwd(), 'dist/**/*.entity.js')],
+        entities: [Client, Booking],
+        // entities: [join(process.cwd(), 'dist/**/*.entity.js')],
       })
 
     }),
-    BookingsModule
+    BookingsModule,
+    ClientsModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
