@@ -5,10 +5,10 @@ Um serviço de notificação baseado em FastAPI que envia e-mails para eventos d
 ## 🚀 Getting Started
 
 ### **1️⃣ Executar a API**
-Para iniciar o servidor FastAPI, execute:
+Para iniciar execute:
 
 ```bash
-uvicorn app.main:app --reload
+docker compose up
 ```
 
 ### 📄 Documentação Swagger
@@ -16,8 +16,6 @@ Acesse a documentação da API em:
 
 🔗 [Swagger UI](http://0.0.0.0:8080/api/docs)
 
-## 🛠️ To-Do
 
-- Adicionar banco de dados
 
 
