@@ -1,11 +1,8 @@
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, EmailStr
 from typing import List
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from typing import Literal
-from app.config import Base 
-import re
-
+from sqlalchemy import Column, Integer, String, ForeignKey
+from app.database import Base 
+from sqlalchemy.orm import relationship
 class NotificationDB(Base):
     __tablename__ = "notifications"
 
@@ -14,65 +11,33 @@ class NotificationDB(Base):
     title = Column(String, nullable=False)
     body = Column(String, nullable=False)
     notification_type = Column(String, nullable=False)
-    
-class Notification(BaseModel):
-    """Model for sending notifications (email, SMS, push)"""
+
+class NotificationCreate(BaseModel):
+    """Modelo Pydantic para criar notificações (entrada)"""
     recipient: str
     title: str
     body: str
-    notification_type: str  # "collection_status", "payment_update"
+    notification_type: str
 
-    # @root_validator(pre=True)
-    # def validate_recipient(cls, values):
-    #     """
-    #     Validate recipient based on delivery method:
-    #     - If email, ensure recipient is a valid email.
-    #     - If SMS, ensure recipient is a valid phone number.
-    #     - If push notification, ensure recipient is a valid user identifier.
-    #     """
-    #     recipient = values.recipient if hasattr(values, 'recipient') else values.get("recipient")
-    #     delivery_method = values.delivery_method if hasattr(values, 'delivery_method') else values.get("delivery_method")
-
-    #     if not delivery_method:
-    #         raise ValueError("Delivery method is required")
-
-    #     if delivery_method == "email":
-    #         if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", recipient):
-    #             raise ValueError("Invalid email format for email delivery method")
-
-    #     elif delivery_method == "sms":
-    #         if not re.fullmatch(r"^\+?[1-9]\d{1,14}$", recipient):
-    #             raise ValueError("Invalid phone number format for SMS delivery method. Use E.164 format (e.g., +1234567890)")
-
-    #     elif delivery_method == "push":
-    #         if not recipient.strip():
-    #             raise ValueError("Recipient cannot be empty for push notifications")
-
-    #     else:
-    #         raise ValueError("Invalid delivery method. Choose 'email', 'sms', or 'push'.")
-
-    #     return values
- 
+class NotificationResponse(BaseModel):
+    """Modelo Pydantic para resposta de uma notificação"""
+    id: int
+    recipient: str
+    title: str
+    body: str
+    notification_type: str
 
     class Config:
-        schema_extra = {
-            "example": {
-                "recipient": "user@example.com",
-                "title": "🚛 Pickup Notification",
-                "body": "Your product **Tomatoes** (Quantity: 100) was picked up from Warehouse A.",
-                "delivery_method": "email",
-                "notification_type": "collection_status"
-            }
-        }
+        from_attributes = True 
 
 class NotificationListResponse(BaseModel):
     """Modelo para resposta estruturada da listagem de notificações"""
     total: int
-    notifications: List[Notification]
+    notifications: List[NotificationResponse]
     page: int
     size: int
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "success",
                 "total": 2,
@@ -108,7 +73,7 @@ class SuccessResponse(BaseModel):
     message: str
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "success",
                 "message": "Email sent successfully to user@example.com",
@@ -125,3 +90,25 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     error: ErrorDetail
 
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    key = Column(String, unique=True, index=True)  
+    db_name = Column(String, unique=True, index=True)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, index=True)
+    email = Column(String, unique=True, index=True)
+    senha_hash = Column(String)
+    empresa_id = Column(Integer, ForeignKey("companies.id"))
+    empresa = relationship("Company")
+
+class RegisterRequest(BaseModel):
+    nome: str
+    email: EmailStr
+    senha: str
