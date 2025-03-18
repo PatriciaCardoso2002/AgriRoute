@@ -5,23 +5,16 @@ from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
 from app.settings import  SECRET_KEY, ALGORITHM
-from app.database import SessionLocal
+from app.database import get_db
 from app.models import Company, User, RegisterRequest, ErrorResponse
 from app.database_config import gerar_api_key
+
 import logging
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 auth_router = APIRouter(prefix="/v1/notifications/auth", tags=["Authentication"])
-
-def get_db():
-    """Gerador de sessão para o banco de dados central"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # ------------------- AUTENTICAÇÃO DA EMPRESA (API KEY) ------------------- #
 

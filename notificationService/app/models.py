@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import List
 from sqlalchemy import Column, Integer, String, ForeignKey
-from app.database import Base 
+from app.database import Base, ApiBase
 from sqlalchemy.orm import relationship
 class NotificationDB(Base):
     __tablename__ = "notifications"
@@ -113,13 +113,24 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     senha: str
 
-class ClientKey(Base):
+class ClientKey(ApiBase):
     __tablename__ = "client_keys"
     
     id = Column(Integer, primary_key=True, autoincrement=True) 
     email = Column(String, unique=True, index=True)
     key = Column(String, unique=True, index=True)  
 
+class APIKeyResponse(BaseModel):
+    id: int
+    email: str
+    key: str
+
+class PaginatedResponse(BaseModel):
+    status: str
+    total: int
+    page: int
+    size: int
+    api_keys: List[APIKeyResponse]
 
 
 

@@ -1,18 +1,18 @@
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Query, Depends
 from fastapi.responses import JSONResponse
-from app.database import init_db
 from app.auth import auth_router
 from app.notifications import notifications_router
 from app.socket_service import router as websocket_router
-from app.models import ClientKey
-from app.database import SessionLocal
+from app.models import ClientKey, PaginatedResponse, ErrorResponse
+from app.database import get_api_db, init_db
 from sqlalchemy.orm import Session
 
 
 def startup():
     print("🔄 Inicializando o banco de dados...")
     init_db()
-    print("✅ Banco de dados inicializado!")
+    print("✅ Base de dados inicializado!")
+
 
 app = FastAPI(
     title="Notification API",
@@ -22,48 +22,37 @@ app = FastAPI(
     on_startup=[startup]  # Garante que `init_db()` rode no início
 )
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+api_r = APIRouter(prefix="/v1/notifications/api_keys", tags=["API Keys"])
 
-api_r = APIRouter(prefix="/v1/api_keys", tags=["API Keys"])
-
-@api_r.get("", response_model=dict)
+@api_r.get("", response_model=PaginatedResponse, responses={404: {"model": ErrorResponse}})
 def list_api_keys(
-    page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db)
+    page: int = Query(1, ge=1, description="Número da página (deve ser >= 1)"),
+    size: int = Query(10, ge=1, le=100, description="Tamanho da página (entre 1 e 100)"),
+    db: Session = Depends(get_api_db),  # ⚠️ Usando a DB correta!
 ):
-    """ Returns paginated list of API keys and associated emails """
-    
+    """🔑 Retorna uma lista paginada de chaves de API e emails associados."""
+
     total = db.query(ClientKey).count()
 
     if total == 0:
-        return JSONResponse(
+        raise HTTPException(
             status_code=404,
-            content={
-                "error": {
-                    "message": "No API keys found.",
-                    "type": "NotFoundError",
-                    "code": 404,
-                    "trace_id": "ERR404-API-KEYS"
-                }
+            detail={
+                "message": "No API keys found.",
+                "type": "NotFoundError",
+                "code": 404,
+                "trace_id": "ERR404-API-KEYS"
             }
         )
 
     if (page - 1) * size >= total:
-        return JSONResponse(
+        raise HTTPException(
             status_code=404,
-            content={
-                "error": {
-                    "message": "Page number exceeds total available API keys.",
-                    "type": "NotFoundError",
-                    "code": 404,
-                    "trace_id": "ERR404-PAGINATION"
-                }
+            detail={
+                "message": "Page number exceeds total available API keys.",
+                "type": "PaginationError",
+                "code": 400,
+                "trace_id": "ERR404-PAGINATION"
             }
         )
 
@@ -72,9 +61,9 @@ def list_api_keys(
     return {
         "status": "success",
         "total": total,
-        "api_keys": [{"id": key.id, "email": key.email, "key": key.key} for key in api_keys],
         "page": page,
-        "size": size
+        "size": size,
+        "api_keys": [{"id": key.id, "email": key.email, "key": key.key} for key in api_keys]
     }
 
 

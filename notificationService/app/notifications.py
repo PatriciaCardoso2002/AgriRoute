@@ -1,20 +1,13 @@
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from app.database import SessionLocal, get_db
 from app.models import ErrorResponse, SuccessResponse, NotificationListResponse, NotificationDB, NotificationCreate, Company
 from app.service import send_email, send_sms, send_push_notification
 from app.auth import autenticar_empresa
 import re
 
 notifications_router = APIRouter(prefix="/v1/notifications", tags=["Notifications"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @notifications_router.post(
     "/sms",
@@ -447,7 +440,7 @@ async def create_notification_push(
     )
 
 @notifications_router.get(
-    "/",
+    "",
     response_model=NotificationListResponse,
     status_code=200,
     responses={
