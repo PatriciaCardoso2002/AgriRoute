@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Query, Depends, Header
+from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
@@ -87,7 +87,7 @@ def get_db():
 async def create_notification_sms(
     notification: NotificationCreate,
     empresa: Company = Depends(autenticar_empresa), 
-    db: Session = Depends(SessionLocal)
+    db: Session = Depends(get_db)
 ):
     """ Sends a notification through SMS """
 
@@ -239,7 +239,7 @@ async def create_notification_sms(
 async def create_notification_email(
     notification: NotificationCreate,
     empresa: Company = Depends(autenticar_empresa), 
-    db: Session = Depends(SessionLocal)
+    db: Session = Depends(get_db)
 ):
     """Sends a notification through email"""
 

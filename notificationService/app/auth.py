@@ -10,6 +10,7 @@ from app.models import Company, User, RegisterRequest, ErrorResponse
 from app.database_config import gerar_api_key
 import logging
 
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 auth_router = APIRouter(prefix="/v1/notifications/auth", tags=["Authentication"])
@@ -27,26 +28,21 @@ def get_db():
 def autenticar_empresa(
     request: Request,
     api_key: str = Header(None), 
-    x_api_key: str = Header(None),  
     db: Session = Depends(get_db)
 ):
     """Verifica a API Key e retorna a empresa correspondente"""
-
+    
     logging.basicConfig(level=logging.INFO)
 
-    # Verificar cabeçalho
-    final_api_key = api_key if api_key else x_api_key
-    logging.info(f"🔍 API Key recebida: {final_api_key}")  
-
-    if not final_api_key:
+    if not api_key:
         logging.info("❌ Nenhuma API Key foi recebida!")
         raise HTTPException(status_code=401, detail="API Key necessária")  
 
     # Tenta ver empresa no banco de dados com essa API Key
-    empresa = db.query(Company).filter(Company.key == final_api_key).first()
+    empresa = db.query(Company).filter(Company.key == api_key).first()
     
     if not empresa:
-        logging.info(f"❌ API Key {final_api_key} não encontrada no banco de dados!")
+        logging.info(f"❌ API Key {api_key} não encontrada no banco de dados!")
         raise HTTPException(status_code=403, detail="API Key inválida")
 
     logging.info(f"✅ API Key válida! Empresa: {empresa.name}")
@@ -102,9 +98,8 @@ def autenticar_empresa(
         }
     }
 )
-async def register_company(request: RegisterRequest, db: Session = Depends(SessionLocal)):
+async def register_company(request: RegisterRequest, db: Session = Depends(get_db)):
     """Registers a new company and ensures unique email"""
-
     if not request.nome or not request.email or not request.senha:
         return JSONResponse(
             status_code=422,
@@ -147,7 +142,7 @@ async def register_company(request: RegisterRequest, db: Session = Depends(Sessi
         )
 
     try:
-        api_key = gerar_api_key()
+        api_key = gerar_api_key(request.email)
 
         db_name = f"company_{request.nome.lower()}"
         empresa = Company(name=request.nome, db_name=db_name, key=api_key)

@@ -112,3 +112,14 @@ class RegisterRequest(BaseModel):
     nome: str
     email: EmailStr
     senha: str
+
+class ClientKey(Base):
+    __tablename__ = "client_keys"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True) 
+    email = Column(String, unique=True, index=True)
+    key = Column(String, unique=True, index=True)  
+
+
+
+

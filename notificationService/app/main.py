@@ -1,9 +1,13 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Query, Depends
 from fastapi.responses import JSONResponse
 from app.database import init_db
 from app.auth import auth_router
 from app.notifications import notifications_router
 from app.socket_service import router as websocket_router
+from app.models import ClientKey
+from app.database import SessionLocal
+from sqlalchemy.orm import Session
+
 
 def startup():
     print("🔄 Inicializando o banco de dados...")
@@ -17,6 +21,62 @@ app = FastAPI(
     docs_url="/api/docs",
     on_startup=[startup]  # Garante que `init_db()` rode no início
 )
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+api_r = APIRouter(prefix="/v1/api_keys", tags=["API Keys"])
+
+@api_r.get("", response_model=dict)
+def list_api_keys(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """ Returns paginated list of API keys and associated emails """
+    
+    total = db.query(ClientKey).count()
+
+    if total == 0:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "message": "No API keys found.",
+                    "type": "NotFoundError",
+                    "code": 404,
+                    "trace_id": "ERR404-API-KEYS"
+                }
+            }
+        )
+
+    if (page - 1) * size >= total:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "message": "Page number exceeds total available API keys.",
+                    "type": "NotFoundError",
+                    "code": 404,
+                    "trace_id": "ERR404-PAGINATION"
+                }
+            }
+        )
+
+    api_keys = db.query(ClientKey).offset((page - 1) * size).limit(size).all()
+
+    return {
+        "status": "success",
+        "total": total,
+        "api_keys": [{"id": key.id, "email": key.email, "key": key.key} for key in api_keys],
+        "page": page,
+        "size": size
+    }
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -46,7 +106,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
         }
     )
 
+app.include_router(api_r) # API Keys
 app.include_router(auth_router)  # Autenticação
 app.include_router(notifications_router)  # Notificações
 app.include_router(websocket_router) #Socket
-
