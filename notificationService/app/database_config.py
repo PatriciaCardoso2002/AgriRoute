@@ -64,9 +64,10 @@ def criar_base_dados_empresa(db_name):
     except psycopg2.Error as e:
         print(f"❌ Erro ao criar database {db_name}: {e}")
 
-def gerar_api_key(email: str, db: Session):
+def gerar_api_key(email: str):
     """🔹 Gera uma API Key e salva na base de dados API."""
     try:
+        db=ApiSessionLocal()
         key = secrets.token_hex(32)
         client_key = ClientKey(email=email, key=key)
         db.add(client_key)

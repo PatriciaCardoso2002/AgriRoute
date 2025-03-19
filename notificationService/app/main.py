@@ -30,7 +30,7 @@ def list_api_keys(
     size: int = Query(10, ge=1, le=100, description="Tamanho da página (entre 1 e 100)"),
     db: Session = Depends(get_api_db),  # ⚠️ Usando a DB correta!
 ):
-    """🔑 Retorna uma lista paginada de chaves de API e emails associados."""
+    """Retorna uma lista paginada de chaves de API e emails associados."""
 
     total = db.query(ClientKey).count()
 

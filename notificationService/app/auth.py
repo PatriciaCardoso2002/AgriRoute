@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
 from app.settings import  SECRET_KEY, ALGORITHM
-from app.database import get_db
+from app.database import get_db, get_api_db
 from app.models import Company, User, RegisterRequest, ErrorResponse
 from app.database_config import gerar_api_key
 

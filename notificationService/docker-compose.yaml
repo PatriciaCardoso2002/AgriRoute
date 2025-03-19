@@ -39,7 +39,6 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
 
-      
 volumes:
   postgres_data:
 
