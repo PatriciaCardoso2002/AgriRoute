@@ -16,132 +16,196 @@ export class BookingsService {
     private readonly clientsService: ClientsService,
   ) {}
 
+  // async create(key: string, data: CreateBookingDto) {
+  //   const { bookingId, datetime, duration, description } = data;
+
+  //   // console.log('\nkey: ', key);
+
+  //   // console.log('bookingId: ', bookingId);
+  //   // console.log('datetime: ', datetime);
+  //   // console.log('duration: ', duration);
+  //   // console.log('description: ', description);
+
+  //   try {
+  //     if (!bookingId) {
+  //       // Booking id is not given as parameter
+  //       console.log('\nBooking Id isnt given !');
+
+  //       /** Get all client bookings by his api-key and check
+  //        * if a booking already exists at the specified datetime */
+  //       const isBookingExists = await this.bookingRepository.find({
+  //         relations: ['client'],
+  //         where: { client: { apikey: key }, datetime: datetime },
+  //       });
+
+  //       console.log(isBookingExists);
+
+  //       if (isBookingExists.length == 0) {
+  //         // Check if there is overlapping with other bookings
+  //         let overlappingExists: boolean = false;
+  //         const bookings = await this.bookingRepository.find({
+  //           relations: ['client'],
+  //           where: { client: { apikey: key } },
+  //         });
+
+  //         bookings.forEach((existingBooking) => {
+  //           if (
+  //             isOverlapping(existingBooking, {
+  //               datetime: datetime,
+  //               duration: duration,
+  //             })
+  //           ) {
+  //             overlappingExists = true; // Overlapping booking found
+  //             return; // Exit from forEach loop early
+  //           }
+  //         });
+
+  //         if (!overlappingExists) {
+  //           const client = await this.clientsService.findByKey(key);
+  //           const booking = this.bookingRepository.create({
+  //             datetime,
+  //             duration,
+  //             description,
+  //             client,
+  //           });
+  //           await this.bookingRepository.save(booking);
+  //         } else {
+  //           return {
+  //             statusCode: HttpStatus.CONFLICT,
+  //             message: 'Booking failed. There is a scheduling conflict.',
+  //           };
+  //         }
+  //       } else {
+  //         return {
+  //           statusCode: HttpStatus.CONFLICT,
+  //           message: 'Sorry, booking already exists at this datetime.',
+  //         };
+  //       }
+  //       return {
+  //         statusCode: HttpStatus.CREATED,
+  //         message: 'Meeting booked successfully.',
+  //       };
+  //     } else {
+  //       // Booking id is given as parameter
+
+  //       /******* Check if bookingId already exists */
+  //       const isBookingIdExists = await this.bookingRepository.find({
+  //         where: { id: bookingId },
+  //       });
+
+  //       if (isBookingIdExists.length == 0) {
+  //         /** Get all client bookings by his api-key and check
+  //          * if a booking already exists at the specified datetime */
+  //         const isBookingExists = await this.bookingRepository.find({
+  //           relations: ['client'],
+  //           where: { client: { apikey: key }, datetime: datetime },
+  //         });
+
+  //         if (isBookingExists.length == 0) {
+  //           // Check if there is overlapping with other bookings
+  //           let overlappingExists: boolean = false;
+  //           const bookings = await this.bookingRepository.find({
+  //             relations: ['client'],
+  //             where: { client: { apikey: key } },
+  //           });
+
+  //           bookings.forEach((existingBooking) => {
+  //             if (
+  //               isOverlapping(existingBooking, {
+  //                 datetime: datetime,
+  //                 duration: duration,
+  //               })
+  //             ) {
+  //               overlappingExists = true; // Overlapping booking found
+  //               return; // Exit from forEach loop early
+  //             }
+  //           });
+
+  //           if (!overlappingExists) {
+  //             const client = await this.clientsService.findByKey(key);
+  //             const booking = this.bookingRepository.create({
+  //               datetime,
+  //               duration,
+  //               description,
+  //               client,
+  //             });
+  //             await this.bookingRepository.save(booking);
+  //           } else {
+  //             return {
+  //               statusCode: HttpStatus.CONFLICT,
+  //               message: 'Booking failed. There is a scheduling conflict.',
+  //             };
+  //           }
+  //         } else {
+  //           return {
+  //             statusCode: HttpStatus.CONFLICT,
+  //             message: 'Sorry, booking already exists at this datetime.',
+  //           };
+  //         }
+  //         return {
+  //           statusCode: HttpStatus.CREATED,
+  //           message: 'Meeting booked successfully.',
+  //         };
+  //       } else {
+  //         return {
+  //           statusCode: HttpStatus.CONFLICT,
+  //           message: 'Sorry, booking id already exists',
+  //         };
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //     return {
+  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+  //       message: 'Sorry, something went wrong',
+  //     };
+  //   }
+  // }
+
   async create(key: string, data: CreateBookingDto) {
-    const { bookingId, datetime, duration, description } = data;
-
-    // console.log('\nkey: ', key);
-
-    // console.log('bookingId: ', bookingId);
-    // console.log('datetime: ', datetime);
-    // console.log('duration: ', duration);
-    // console.log('description: ', description);
-
+    const { datetime, duration, description } = data;
+  
     try {
-      if (!bookingId) {
-        // Booking id is not given as parameter
-        console.log('\nBooking Id isnt given !');
-
-        /** Get all client bookings by his api-key and check
-         * if a booking already exists at the specified datetime */
-        const isBookingExists = await this.bookingRepository.find({
+      // Verificar se já existe um agendamento no mesmo horário para o mesmo cliente
+      const isBookingExists = await this.bookingRepository.find({
+        relations: ['client'],
+        where: { client: { apikey: key }, datetime: datetime },
+      });
+  
+      if (isBookingExists.length === 0) {
+        // Verificar se há conflitos de horário com outros agendamentos do cliente
+        let overlappingExists = false;
+        const bookings = await this.bookingRepository.find({
           relations: ['client'],
-          where: { client: { apikey: key }, datetime: datetime },
+          where: { client: { apikey: key } },
         });
-
-        console.log(isBookingExists);
-
-        if (isBookingExists.length == 0) {
-          // Check if there is overlapping with other bookings
-          let overlappingExists: boolean = false;
-          const bookings = await this.bookingRepository.find({
-            relations: ['client'],
-            where: { client: { apikey: key } },
-          });
-
-          bookings.forEach((existingBooking) => {
-            if (
-              isOverlapping(existingBooking, {
-                datetime: datetime,
-                duration: duration,
-              })
-            ) {
-              overlappingExists = true; // Overlapping booking found
-              return; // Exit from forEach loop early
-            }
-          });
-
-          if (!overlappingExists) {
-            const client = await this.clientsService.findByKey(key);
-            const booking = this.bookingRepository.create({
-              datetime,
-              duration,
-              description,
-              client,
-            });
-            await this.bookingRepository.save(booking);
-          } else {
-            return {
-              statusCode: HttpStatus.CONFLICT,
-              message: 'Booking failed. There is a scheduling conflict.',
-            };
+  
+        bookings.forEach((existingBooking) => {
+          if (
+            isOverlapping(existingBooking, {
+              datetime: datetime,
+              duration: duration,
+            })
+          ) {
+            overlappingExists = true; // Encontrei um conflito de horário
+            return; // Sair do loop
           }
-        } else {
-          return {
-            statusCode: HttpStatus.CONFLICT,
-            message: 'Sorry, booking already exists at this datetime.',
-          };
-        }
-        return {
-          statusCode: HttpStatus.CREATED,
-          message: 'Meeting booked successfully.',
-        };
-      } else {
-        // Booking id is given as parameter
-
-        /******* Check if bookingId already exists */
-        const isBookingIdExists = await this.bookingRepository.find({
-          where: { id: bookingId },
         });
-
-        if (isBookingIdExists.length == 0) {
-          /** Get all client bookings by his api-key and check
-           * if a booking already exists at the specified datetime */
-          const isBookingExists = await this.bookingRepository.find({
-            relations: ['client'],
-            where: { client: { apikey: key }, datetime: datetime },
+  
+        if (!overlappingExists) {
+          // Buscar cliente pelo apikey
+          const client = await this.clientsService.findByKey(key);
+  
+          // Criar a reserva sem a necessidade de passar bookingId (ele será gerado automaticamente)
+          const booking = this.bookingRepository.create({
+            datetime,
+            duration,
+            description,
+            client,
           });
-
-          if (isBookingExists.length == 0) {
-            // Check if there is overlapping with other bookings
-            let overlappingExists: boolean = false;
-            const bookings = await this.bookingRepository.find({
-              relations: ['client'],
-              where: { client: { apikey: key } },
-            });
-
-            bookings.forEach((existingBooking) => {
-              if (
-                isOverlapping(existingBooking, {
-                  datetime: datetime,
-                  duration: duration,
-                })
-              ) {
-                overlappingExists = true; // Overlapping booking found
-                return; // Exit from forEach loop early
-              }
-            });
-
-            if (!overlappingExists) {
-              const client = await this.clientsService.findByKey(key);
-              const booking = this.bookingRepository.create({
-                datetime,
-                duration,
-                description,
-                client,
-              });
-              await this.bookingRepository.save(booking);
-            } else {
-              return {
-                statusCode: HttpStatus.CONFLICT,
-                message: 'Booking failed. There is a scheduling conflict.',
-              };
-            }
-          } else {
-            return {
-              statusCode: HttpStatus.CONFLICT,
-              message: 'Sorry, booking already exists at this datetime.',
-            };
-          }
+  
+          await this.bookingRepository.save(booking);
+          
           return {
             statusCode: HttpStatus.CREATED,
             message: 'Meeting booked successfully.',
@@ -149,9 +213,14 @@ export class BookingsService {
         } else {
           return {
             statusCode: HttpStatus.CONFLICT,
-            message: 'Sorry, booking id already exists',
+            message: 'Booking failed. There is a scheduling conflict.',
           };
         }
+      } else {
+        return {
+          statusCode: HttpStatus.CONFLICT,
+          message: 'Sorry, booking already exists at this datetime.',
+        };
       }
     } catch (error) {
       console.log(error);

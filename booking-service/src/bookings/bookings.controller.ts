@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Query, Version } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Query, Version, ParseUUIDPipe } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
-import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
 
@@ -174,7 +174,8 @@ export class BookingsController {
     description:
       'This endpoint returns a booking information by his booking id.',
   })
-  findOne(@Req() request: Request, @Param('bookingId') id: string) {
+  findOne(@Req() request: Request, @Param('bookingId', new ParseUUIDPipe()) id: string) {
+    console.log('ID recebido no controlador:', id);
     const key = this.getApiKey(request);
     return this.bookingsService.findOne(key, id);
   }
@@ -221,3 +222,4 @@ export class BookingsController {
     return this.bookingsService.remove(key, id);
   }
 }
+

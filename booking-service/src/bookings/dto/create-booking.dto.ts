@@ -2,10 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class CreateBookingDto {
-  @ApiPropertyOptional({ default: 'The uuid of the booking' })
-  @IsUUID()
-  @IsOptional()
-  bookingId: string;
+  // @ApiProperty()
+  // @IsUUID()
+  // bookingId: string;
 
   @ApiProperty({
     type: 'string',
