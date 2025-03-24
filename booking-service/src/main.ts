@@ -8,6 +8,8 @@ import { VersioningType } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors();
+
   app.enableVersioning({
     type: VersioningType.URI,
   });
@@ -58,6 +60,6 @@ async function bootstrap() {
   SwaggerModule.setup('api/bookings', app, bookingDocument);
   SwaggerModule.setup('api/clients', app, clientDocument);
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 5000);
 }
 bootstrap();

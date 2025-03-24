@@ -1,9 +1,10 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import "./../styles/home.css";
 import strawberries from "./../images/strawberries.jpg"; 
+import React, { useEffect } from "react";
 
 function Home() {
+
   return (
     <div className="container mt-5 text-center">
       {/* 🔥 Imagem de Destaque */}

@@ -1,38 +1,97 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaSignOutAlt } from 'react-icons/fa'; // Import logout icon
-
+import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
+import { useAuth0 } from "@auth0/auth0-react";
 // Import components
-import Home from './components/Home';
-import BookingConsumer from './components/BookingConsumer';
-import BookingTransporter from './components/BookingTransporter';
-import BookingProducer from './components/BookingProducer';
-import Login from './components/Login';
-import Logo from './components/Logo';
+import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile } from './components';
+import { useNavigate } from 'react-router-dom';
+import BookingService from './services/bookingService';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const {isAuthenticated, getIdTokenClaims } = useAuth0();
+  const [hasRedirectedAfterLogin, setHasRedirectedAfterLogin] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedLogin = localStorage.getItem("isLoggedIn");
-    const storedRole = localStorage.getItem("userRole");
-    if (storedLogin === "true" && storedRole) {
-      setIsLoggedIn(true);
-      setUserRole(storedRole);
-    }
-  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userRole");
-    setIsLoggedIn(false);
-    setUserRole("");
-  };
+    const checkRoleAndRedirect = async () => {
+      let claims;
+      
+      // Espera até que o token de identidade (claims) esteja disponível
+      while (!claims) {
+        claims = await getIdTokenClaims(); // Obtém os claims do token
+        if (!claims) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms e tenta novamente
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms e tenta novamente
+      }
+      // Agora que temos os claims, verificamos os roles
+      const roles = claims["https://myapp.com/roles"] || [];
+      console.log("🔐 Roles do user:", roles);
+      const name = claims.name || "Anonymous";
+      console.log("🔐 Name do user:", name);
+      
+      // try {
+      //   // Verifica se já existe o client no Booking API
+      //   const apikey = localStorage.getItem("apikey");
+  
+      //   if (!apikey) {
+      //     // Criar novo cliente no BookingService
+      //     const clientRes = await BookingService.createClient({ name });
+  
+      //     // Guarda a apikey no localStorage para chamadas futuras
+      //     const newapikey = clientRes.apikey;
+      //     localStorage.setItem("apikey", newapikey);
+  
+      //     console.log("✅ Cliente criado com sucesso:", clientRes);
+      //   } else {
+      //     console.log("🔐 API Key já existente no localStorage:", apikey);
+      //   }
+  
+      // } catch (error) {
+      //   console.error("❌ Erro ao criar/verificar cliente no serviço de bookings", error);
+      // }
+      try {
+        // Verificar se o cliente já foi registrado, usando o email do usuário
+        const existingClient = await BookingService.getClientByEmail(name);
+    
+        if (existingClient) {
+          console.log('Cliente já existe, API Key:', existingClient.apikey);
+          // Armazenar a API Key no localStorage
+          localStorage.setItem('apikey', existingClient.apikey);
+          localStorage.setItem('name', existingClient.name);
+        } else {
+          // Se o cliente não existe, cria um novo cliente
+          const newClient = await BookingService.createClient({ name: name });
+          console.log('Novo cliente criado, API Key:', newClient.apikey);
+          // Armazenar a nova API Key no localStorage
+          localStorage.setItem('apikey', newClient.apikey);
+          localStorage.setItem('name', existingClient.name);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar/criar cliente:', error);
+      }
+
+      if (roles.includes("producer")) {
+        setUserRole("producer");
+        navigate("/bookingProducer");
+      } else if (roles.includes("transporter")) {
+        setUserRole("transporter");
+        navigate("/bookingTransporter");
+      } else {
+        navigate("/");
+      }
+
+    };
+
+    if (isAuthenticated && !hasRedirectedAfterLogin) {
+      checkRoleAndRedirect();
+      setHasRedirectedAfterLogin(true);
+    }
+  }, [isAuthenticated, navigate, getIdTokenClaims, hasRedirectedAfterLogin]);
 
   return (
-    <Router>
+    // <Router>
       <div className="App">
       <header className="App-header custom-header p-4">
   {/* Navigation Bar */}
@@ -50,17 +109,17 @@ function App() {
         </li>
 
         {/* Show Booking Links Only If Logged In */}
-        {isLoggedIn && userRole === "consumer" && (
+        {/* {isAuthenticated && userRole === "consumer" && (
           <li className="nav-item">
             <Link to="/bookingConsumer" className="nav-link">Booking Consumer</Link>
           </li>
-        )}
-        {isLoggedIn && userRole === "transporter" && (
+        )} */}
+        {isAuthenticated && userRole === "transporter" && (
           <li className="nav-item">
             <Link to="/bookingTransporter" className="nav-link">Booking Transporter</Link>
           </li>
         )}
-        {isLoggedIn && userRole === "producer" && (
+        {isAuthenticated && userRole === "producer" && (
           <li className="nav-item">
             <Link to="/bookingProducer" className="nav-link">Booking Producer</Link>
           </li>
@@ -68,15 +127,28 @@ function App() {
       </ul>
 
       {/* Show Login if Not Logged In, Logout if Logged In */}
-      {isLoggedIn ? (
+      {/* {isLoggedIn ? (
         <button className="btn btn-danger" onClick={handleLogout}>
           <FaSignOutAlt className="me-2" /> Logout
         </button>
       ) : (
-        <Link to="/login" className="nav-link text-success fs-5">
-          <FaUser className="me-2" />
-        </Link>
+        <LoginButton className="me-2"></LoginButton>
+        // <Link to="/login" className="nav-link text-success fs-5">
+        //   <FaUser className="me-2" />
+        // </Link>
       )}
+      <LogoutButton></LogoutButton>
+      <Profile></Profile> */}
+      <div className="d-flex align-items-center">
+        {isAuthenticated ? (
+          <>
+            <Profile/> {/* Exibe o botão de perfil */}
+            <LogoutButton /> {/* Exibe o botão de logout com o ícone */}
+          </>
+        ) : (
+          <LoginButton /> 
+        )}
+    </div>
     </div>
   </nav>
 
@@ -92,7 +164,7 @@ function App() {
   </div>
 </header>
       </div>
-    </Router>
+    // </Router>
   );
 }
 
