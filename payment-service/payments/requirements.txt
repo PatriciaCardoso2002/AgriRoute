@@ -1,0 +1,6 @@
+djangorestframework
+psycopg2-binary
+python-dotenv
+drf-yasg
+requests
+stripe
