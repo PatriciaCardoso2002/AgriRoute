@@ -54,22 +54,24 @@ function App() {
       try {
         // Verificar se o cliente já foi registrado, usando o email do usuário
         const existingClient = await BookingService.getClientByEmail(name);
-    
+      
         if (existingClient) {
           console.log('Cliente já existe, API Key:', existingClient.apikey);
           // Armazenar a API Key no localStorage
           localStorage.setItem('apikey', existingClient.apikey);
-          localStorage.setItem('name', existingClient.name);
+          localStorage.setItem('name', existingClient.name || name); // Usar o name do Auth0 se não tiver no cliente
         } else {
           // Se o cliente não existe, cria um novo cliente
           const newClient = await BookingService.createClient({ name: name });
           console.log('Novo cliente criado, API Key:', newClient.apikey);
           // Armazenar a nova API Key no localStorage
           localStorage.setItem('apikey', newClient.apikey);
-          localStorage.setItem('name', existingClient.name);
+          localStorage.setItem('name', name); // Usar o name do Auth0
         }
       } catch (error) {
         console.error('Erro ao verificar/criar cliente:', error);
+        // Se houver erro, pelo menos armazenar o nome do Auth0
+        localStorage.setItem('name', name);
       }
 
       if (roles.includes("producer")) {
