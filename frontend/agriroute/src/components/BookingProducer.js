@@ -16,9 +16,7 @@ function BookingProducer() {
     product: "",
     quantity: "",
     time: "",
-    notes: "",
-    pickupAddress: "", // Novo campo
-    deliveryAddress: "" // Novo campo
+    notes: ""
   });
 
   const toLocalISODate = (date) => {
@@ -34,7 +32,6 @@ function BookingProducer() {
     setUsername(storedUsername);
   }, [formattedDate]);
 
-  // Autenticação (mantido igual)
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
@@ -67,7 +64,6 @@ function BookingProducer() {
     else setAuthReady(false);
   }, [isAuthenticated, getIdTokenClaims]);
 
-  // Buscar bookings
   useEffect(() => {
     if (!authReady) return;
 
@@ -93,8 +89,6 @@ function BookingProducer() {
             time: "",
             status: "Pendente",
             notes: "",
-            pickupAddress: "Não especificada",
-            deliveryAddress: "Não especificada",
             rawData: b
           };
         
@@ -103,13 +97,11 @@ function BookingProducer() {
             if (part.startsWith("Quantidade:")) result.quantity = part.replace("Quantidade:", "").trim();
             if (part.startsWith("Status:")) result.status = part.replace("Status:", "").trim();
             if (part.startsWith("Notas:")) result.notes = part.replace("Notas:", "").trim();
-            if (part.startsWith("Recolha:")) result.pickupAddress = part.replace("Recolha:", "").trim();
-            if (part.startsWith("Entrega:")) result.deliveryAddress = part.replace("Entrega:", "").trim();
           });
         
           if (b.datetime) {
             const eventTime = new Date(b.datetime);
-            result.time = eventTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            result.time = eventTime.toLocaleTimeString('pt-PT', { hour: "2-digit", minute: "2-digit" });
           }
         
           return result;
@@ -136,16 +128,27 @@ function BookingProducer() {
 
   const handleAddEvent = async (e) => {
     e.preventDefault();
-    const { product, quantity, time, notes, pickupAddress, deliveryAddress } = newEvent;
+    const { product, quantity, time, notes } = newEvent;
 
-    if (!product || !quantity || !time || !pickupAddress || !deliveryAddress) {
-      alert("Todos os campos são obrigatórios.");
+    if (!product || !quantity || !time) {
+      alert("Produto, quantidade e hora são obrigatórios.");
       return;
     }
 
-    const datetime = new Date(`${formattedDate}T${time.padStart(2, '0')}:00`);
+    // Corrigir formatação do tempo
+    const [hours, minutes] = time.split(':');
+    const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+    
+    // Criar data no formato correto
+    const datetime = new Date(`${formattedDate}T${formattedTime}`);
+    datetime.setHours(datetime.getHours()); // Ajuste para timezone
+
+    if (isNaN(datetime.getTime())) {
+      alert("Data/hora inválida");
+      return;
+    }
+
     let claims;
-      
     while (!claims) {
       claims = await getIdTokenClaims();
       if (!claims) await new Promise(resolve => setTimeout(resolve, 500));
@@ -154,10 +157,10 @@ function BookingProducer() {
     const apiKey = localStorage.getItem("apikey");
     const userId = claims.sub;
     
-    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress}`;
+    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'}`;
 
     const bookingData = {
-      datetime,
+      datetime: datetime.toISOString(),
       duration: 3600,
       description,
     };
@@ -173,11 +176,9 @@ function BookingProducer() {
           {
             product,
             quantity,
-            time,
+            time: formattedTime.slice(0, 5),
             notes: notes || "Sem observações",
-            pickupAddress,
-            deliveryAddress,
-            status: "Aguardando",
+            status: "Pendente",
             description
           },
         ],
@@ -187,13 +188,15 @@ function BookingProducer() {
         product: "", 
         quantity: "", 
         time: "", 
-        notes: "",
-        pickupAddress: "",
-        deliveryAddress: ""
+        notes: ""
       });
     } catch (error) {
       console.error("❌ Erro ao criar booking:", error);
-      alert("Erro ao criar pedido.");
+      let errorMsg = "Erro ao criar pedido";
+      if (error.response) {
+        errorMsg += `: ${error.response.data.message || error.response.statusText}`;
+      }
+      alert(errorMsg);
     }
   };
 
@@ -204,6 +207,18 @@ function BookingProducer() {
           .has-booking {
             background-color: #c7f4c2 !important;
             font-weight: bold;
+          }
+          .status-pendente {
+            color: #ffc107;
+          }
+          .status-confirmado {
+            color: #28a745;
+          }
+          .status-cancelado {
+            color: #dc3545;
+          }
+          .status-concluído {
+            color: #17a2b8;
           }
         `}
       </style>
@@ -236,8 +251,6 @@ function BookingProducer() {
               <div key={index} className="agenda-item">
                 <h5>{event.product} - {event.quantity}</h5>
                 <p>{event.time}</p>
-                <p><strong>Recolha:</strong> {event.pickupAddress}</p>
-                <p><strong>Entrega:</strong> {event.deliveryAddress}</p>
                 <p className={`status-${event.status.toLowerCase()}`}>
                   Status: {event.status}
                 </p>
@@ -282,30 +295,6 @@ function BookingProducer() {
                 value={newEvent.time}
                 onChange={handleInputChange}
                 className="form-control"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Morada de Recolha:</label>
-              <input
-                type="text"
-                name="pickupAddress"
-                value={newEvent.pickupAddress}
-                onChange={handleInputChange}
-                className="form-control"
-                placeholder="Ex: Quinta das Flores, Rua do Pomar 123"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Morada de Entrega:</label>
-              <input
-                type="text"
-                name="deliveryAddress"
-                value={newEvent.deliveryAddress}
-                onChange={handleInputChange}
-                className="form-control"
-                placeholder="Ex: Mercado Municipal de Lisboa"
                 required
               />
             </div>
