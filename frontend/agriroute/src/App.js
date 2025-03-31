@@ -30,6 +30,13 @@ function App() {
       console.log("🔐 Roles do user:", roles);
       const name = claims.name || "Anonymous";
       console.log("🔐 Name do user:", name);
+      const userId = claims.sub || "iddddd";  // Aqui está o client id do Auth0
+      console.log("🔐 ID do user:", userId);
+      const nick = claims.nickname || "nickname";  // Aqui está o client id do Auth0
+      console.log("🔐 nickname do user:", nick);
+      localStorage.setItem("nickname", nick);
+      const claim = claims || "claims";  // Aqui está o client id do Auth0
+      console.log("🔐 claims do user:", claim);
       
       // try {
       //   // Verifica se já existe o client no Booking API
@@ -53,7 +60,7 @@ function App() {
       // }
       try {
         // Verificar se o cliente já foi registrado, usando o email do usuário
-        const existingClient = await BookingService.getClientByEmail(name);
+        const existingClient = await BookingService.getClientByName("Agriroute");
       
         if (existingClient) {
           console.log('Cliente já existe, API Key:', existingClient.apikey);
@@ -62,16 +69,14 @@ function App() {
           localStorage.setItem('name', existingClient.name || name); // Usar o name do Auth0 se não tiver no cliente
         } else {
           // Se o cliente não existe, cria um novo cliente
-          const newClient = await BookingService.createClient({ name: name });
+          const newClient = await BookingService.createClient({ name: "Agriroute" });
           console.log('Novo cliente criado, API Key:', newClient.apikey);
           // Armazenar a nova API Key no localStorage
           localStorage.setItem('apikey', newClient.apikey);
-          localStorage.setItem('name', name); // Usar o name do Auth0
+          localStorage.setItem('name', "Agriroute"); // Usar o name do Auth0
         }
       } catch (error) {
         console.error('Erro ao verificar/criar cliente:', error);
-        // Se houver erro, pelo menos armazenar o nome do Auth0
-        localStorage.setItem('name', name);
       }
 
       if (roles.includes("producer")) {

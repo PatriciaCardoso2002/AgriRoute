@@ -51,7 +51,7 @@ function BookingTransporter() {
 
   // Load user name
   useEffect(() => {
-    const storedUsername = localStorage.getItem("name") || "Transportador";
+    const storedUsername = localStorage.getItem("nickname") || "Transportador";
     setUsername(storedUsername);
   }, []);
 

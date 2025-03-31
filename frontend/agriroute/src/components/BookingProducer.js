@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { useAuth0 } from "@auth0/auth0-react";
 import "./../styles/booking.css";
-import { createBooking, getBookings } from "../services/bookingService";
+import { createBooking, getBookingsByUser} from "../services/bookingService";
 
 function BookingProducer() {
   const [date, setDate] = useState(new Date());
   const [username, setUsername] = useState("");
   const [events, setEvents] = useState({}); 
+  const {isAuthenticated, getIdTokenClaims } = useAuth0();
+  const [authReady, setAuthReady] = useState(false); // Novo estado
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [newEvent, setNewEvent] = useState({
     product: "",
@@ -20,50 +23,132 @@ function BookingProducer() {
 
   // Buscar nome do user e apiKey
   useEffect(() => {
-    const storedUsername = localStorage.getItem("name") || "Produtor";
+    const storedUsername = localStorage.getItem("nickname") || "Produtor";
     setUsername(storedUsername);
-    console.log("Eventos carregados para a data:", formattedDate, selectedEvents);
+    // console.log("Eventos carregados para a data:", formattedDate, selectedEvents);
   }, [formattedDate]);
 
-  // Buscar bookings do backend ao mudar de data
+  // 1. Primeiro: Buscar dados de autenticação
   useEffect(() => {
-    const fetchBookings = async () => {
-      const apiKey = localStorage.getItem("apikey");
-      if (!apiKey) {
-        console.warn("⚠️ API Key não encontrada.");
-        return;
-      }
-
+    const fetchAuthData = async () => {
       try {
-        const response = await getBookings(apiKey, { date: formattedDate });
-        const bookings = response.data || [];
+        let claims;
+        let attempts = 0;
+        const maxAttempts = 5;
 
-        const response2 = await getBookings(apiKey);
-        const allBookings = response2.data || [];
+        while (!claims && attempts < maxAttempts) {
+          attempts++;
+          claims = await getIdTokenClaims();
+          if (!claims) await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
-        // Obter todas as datas que possuem bookings
-        const datesWithBookings = allBookings.map((b) => new Date(b.datetime).toISOString().split("T")[0]);
+        if (!claims) throw new Error("Não foi possível obter os claims do token");
 
+        const apiKey = localStorage.getItem("apikey");
+        if (!apiKey) throw new Error("API Key não encontrada");
 
-        const mappedBookings = bookings.map((b) => ({
-          description: b.description,  // Use a descrição completa
-          time: new Date(b.datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          status: b.status || "Aguardando",
-        }));
+        const userId = claims.sub;
+        localStorage.setItem('userId', userId);
+
+        // console.log("✅ Autenticação pronta");
+        setAuthReady(true); // Marca que os dados de auth estão prontos
+
+      } catch (error) {
+        console.error("❌ Erro de autenticação:", error);
+        setAuthReady(false);
+      }
+    };
+
+    if (isAuthenticated) fetchAuthData();
+    else setAuthReady(false);
+  }, [isAuthenticated, getIdTokenClaims]);
+
+  // 2. Segundo: Buscar bookings (só executa quando authReady = true)
+  useEffect(() => {
+    if (!authReady) return; // Não executa até a autenticação estar pronta
+
+    const fetchBookings = async () => {
+      try {
+        const apiKey = localStorage.getItem("apikey");
+        const userId = localStorage.getItem("userId");
+
+        // console.log("🔍 Buscando bookings com:", { apiKey, userId, date: formattedDate });
+        
+        const bookings = await getBookingsByUser(apiKey, { date: formattedDate }, userId);
+        // console.log("📦 Bookings recebidos:", bookings);
+
+        const allBookings = await getBookingsByUser(apiKey, {}, userId);
+
+        // console.log("🔍 Todas as bookings:", allBookings);
+
+        // Processa as datas com eventos (formato YYYY-MM-DD)
+        const uniqueDates = [...new Set(
+          allBookings.map(b => new Date(b.datetime).toISOString().split('T')[0])
+        )];
+
+        // console.log("📅 Datas com eventos:", uniqueDates);
+        setDatesWithBookings(uniqueDates);
+
+        // console.log("📅 Estado atual de datesWithBookings:", datesWithBookings);
+        // console.log("📅 Data sendo verificada:", date.toISOString().split("T")[0]);
+
+        // console.log("📦 Dados brutos dos bookings:", bookings);
+        // bookings.forEach((b, i) => {
+        //   console.log(`📦 Booking ${i}:`, b);
+        //   console.log(`🔍 Descrição ${i}:`, b.description);
+        //   console.log(`⏰ Datetime ${i}:`, b.datetime);
+        // });
+
+        const mappedBookings = bookings.map((b) => {
+          // Remove apenas a parte do User ID, mantendo Produto e Quantidade
+          const descriptionWithoutUserId = b.description 
+            ? b.description.split("| User ID")[0].trim() 
+            : "Sem descrição";
+          
+          // Separa Produto e Quantidade (se necessário)
+          const [productPart, quantityPart] = descriptionWithoutUserId.split("|").map(part => part.trim());
+          
+          // Verificação de segurança para datetime
+          const eventTime = b.datetime ? new Date(b.datetime) : new Date();
+          
+          return {
+            description: descriptionWithoutUserId, // Agora sem o User ID
+            product: productPart?.replace("Produto:", "").trim() || "Produto não especificado",
+            quantity: quantityPart?.replace("Quantidade:", "").trim() || "",
+            time: eventTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            status: b.status || "Aguardando",
+            rawData: b
+          };
+        });
+        
+        console.log("🔄 mappedBookings result:", mappedBookings);
+        // console.log("🔍 mappedBookings:", mappedBookings);
+
+        if (bookings.length > 0 && mappedBookings.length === 0) {
+          console.error("❌ Transformação falhou:", {
+            bookings,
+            mappedBookings
+          });
+        }
 
         setEvents((prevEvents) => ({
           ...prevEvents,
           [formattedDate]: mappedBookings,
         }));
-
-        setDatesWithBookings(datesWithBookings);
+     
       } catch (error) {
         console.error("❌ Erro ao buscar bookings:", error);
       }
     };
 
     fetchBookings();
-  }, [date]);
+  }, [date, authReady]); // Adiciona authReady como dependência
+
+
+  // Garantir que os eventos estão atualizados corretamente
+  useEffect(() => {
+    console.log("📅 Eventos para", formattedDate, ":", events[formattedDate] || []);
+  }, [events]);
 
   const selectedEvents = events[formattedDate] || [];
 
@@ -83,9 +168,21 @@ function BookingProducer() {
 
     // Construir o datetime completo com data + hora
     const datetime = new Date(`${formattedDate}T${time.padStart(2, '0')}:00`);
+    let claims;
+      
+      // Espera até que o token de identidade (claims) esteja disponível
+      while (!claims) {
+        claims = await getIdTokenClaims(); // Obtém os claims do token
+        if (!claims) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms e tenta novamente
+        }
+      }
 
     const apiKey = localStorage.getItem("apikey");
     console.log("apikey:", apiKey);
+    const userId = claims.sub;
+    console.log("userId:", userId);
+    localStorage.setItem('userId', userId);
     
     const description = `Produto: ${product} | Quantidade: ${quantity}kg`;
 
@@ -96,22 +193,22 @@ function BookingProducer() {
     };
 
     try {
-      await createBooking(bookingData, apiKey);
+      await createBooking(bookingData, apiKey, userId);
       alert("✅ Pedido criado com sucesso!");
 
-      // Atualizar eventos localmente com a descrição completa
-      const updatedEvents = { ...events };
-      if (!updatedEvents[formattedDate]) {
-        updatedEvents[formattedDate] = [];
-      }
 
-      updatedEvents[formattedDate].push({
-        description,  // Agora armazenando a descrição
-        time,
-        status: "Aguardando",
-      });
-
-      setEvents(updatedEvents);  // Atualiza o estado com a descrição
+      // Atualizar eventos localmente
+      setEvents((prevEvents) => ({
+        ...prevEvents,
+        [formattedDate]: [
+          ...(prevEvents[formattedDate] || []),
+          {
+            description,
+            time,
+            status: "Aguardando",
+          },
+        ],
+      }));
 
       setNewEvent({ product: "", quantity: "", time: "" });
     } catch (error) {
@@ -143,13 +240,11 @@ function BookingProducer() {
             value={date}
             className="custom-calendar"
             tileClassName={({ date, view }) => {
-              // Verifica se a data está na lista de datas com bookings
-              const dateString = date.toISOString().split("T")[0]; // Formato YYYY-MM-DD
-              if (datesWithBookings.includes(dateString)) {
-                return 'has-booking'; // Aplica a classe 'has-booking' se tiver eventos
-              }
-              return ''; // Caso contrário, não aplica nenhuma classe
-            }} />
+              const dateString = date.toISOString().split("T")[0];
+              const hasBooking = datesWithBookings.includes(dateString);
+              // console.log(`📅 ${dateString} - Tem booking? ${hasBooking}`);
+              return hasBooking ? 'has-booking' : '';
+            }}/>
         </div>
 
         <h4>Eventos para {formattedDate}:</h4>

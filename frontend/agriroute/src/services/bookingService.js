@@ -41,14 +41,14 @@ export const deleteClient = async (id) => {
   return axios.delete(`${BASE_URL}/clients/${id}`);
 };
 
-// Função para buscar um cliente na API de Booking por email ou identificador
-const getClientByEmail = async (email) => {
+// Função para buscar um cliente na API de Booking por name ou identificador
+const getClientByName = async (name) => {
     try {
       const response = await axios.get(`${BASE_URL}/clients`);
       const clients = response.data;
   
-      // Procurar pelo nome (se usaste o email como nome ao criar o cliente)
-      const matchingClient = clients.find(client => client.name === email);
+      // Procurar pelo nome 
+      const matchingClient = clients.find(client => client.name === name);
   
       return matchingClient || null;
     } catch (error) {
@@ -59,10 +59,15 @@ const getClientByEmail = async (email) => {
 
 
 //              BOOKINGS: 
-
-export const createBooking = async (data, apiKey) => {
-    return axios.post(`${BASE_URL}/bookings`, data, {
-        ...withApiKey(apiKey),
+  export const createBooking = async (data, apiKey, userId) => {
+    // Adicionar o userId à descrição
+    const bookingData = {
+      ...data,
+      description: `${data.description} | User ID: ${userId}`, // Adiciona o ID do usuário à descrição
+    };
+  
+    return axios.post(`${BASE_URL}/bookings`, bookingData, {
+      ...withApiKey(apiKey),
     });
   };
   
@@ -71,6 +76,37 @@ export const createBooking = async (data, apiKey) => {
         ...withApiKey(apiKey),
       params: filters,
     });
+  };
+
+  export const getBookingsByUser = async (apiKey, filters = {}, userId) => {
+    try {
+      console.log("\n\n\n\n No booking Service: \n🔑 API Key sendo usada:", apiKey);
+      console.log("🔍 Filtros sendo passados:", filters);
+      
+      const response = await axios.get(`${BASE_URL}/bookings`, {
+        ...withApiKey(apiKey),
+        params: filters,
+      });
+      
+      console.log("📡 Resposta completa da API:", response);
+      let bookings = response.data || [];
+      console.log("📝 Todos os bookings antes do filtro:", bookings);
+  
+      if (userId) {
+        console.log("🔍 Filtrando por User ID:", userId);
+        bookings = bookings.filter(booking => {
+          const hasUserId = booking.description && booking.description.includes(`User ID: ${userId}`);
+          console.log(`Booking ${booking.id} - Contém User ID? ${hasUserId}`);
+          return hasUserId;
+        });
+      }
+      
+      console.log("✅ Bookings após filtro:", bookings);
+      return bookings;
+    } catch (error) {
+      console.error("❌ Erro detalhado:", error.response || error);
+      throw error;
+    }
   };
   
   export const getBookingById = async (id, apiKey) => {
@@ -114,11 +150,12 @@ export const createBooking = async (data, apiKey) => {
     getClientByApiKey,
     updateClient,
     deleteClient,
-    getClientByEmail,
+    getClientByName,
     
     // Bookings
     createBooking,
     getBookings,
+    getBookingsByUser,
     getBookingById,
     updateBooking,
     deleteBooking,
