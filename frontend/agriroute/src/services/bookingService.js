@@ -116,9 +116,27 @@ const getClientByName = async (name) => {
   };
   
   export const updateBooking = async (id, data, apiKey) => {
-    return axios.patch(`${BASE_URL}/bookings/${id}`, data, {
-        ...withApiKey(apiKey),
+    console.log("Enviando atualização para o servidor:", {
+      id,
+      data,
+      apiKey: apiKey ? "***" + apiKey.slice(-4) : "none"
     });
+    
+    try {
+      const response = await axios.patch(`${BASE_URL}/bookings/${id}`, data, {
+        ...withApiKey(apiKey),
+      });
+      
+      console.log("Resposta do servidor:", response.data);
+      return response;
+    } catch (error) {
+      console.error("Erro detalhado na atualização:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   };
   
   export const deleteBooking = async (id, apiKey) => {

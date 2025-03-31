@@ -526,91 +526,58 @@ export class BookingsService {
     bookingId: string,
     { datetime, duration, description }: UpdateBookingDto,
   ) {
-    // Update booking values
     try {
-      const isBookingExists = await this.bookingRepository.find({
+      // Verifica se o booking existe
+      const existingBooking = await this.bookingRepository.findOne({
         where: { id: bookingId },
       });
-
-      if (isBookingExists.length !== 0) {
-        // Check for overlaps before updating
-
-        /** Get all client bookings by his api-key and check
-         * if a booking already exists at the specified datetime */
-        let isBookingExists = await this.bookingRepository.find({
-          relations: ['client'],
-          where: { client: { apikey: key }, datetime: datetime },
-        });
-
-        // Remove the booking that we dont want anymore
-        isBookingExists = isBookingExists.filter((obj) => obj.id !== bookingId);
-
-        if (isBookingExists.length === 0) {
-          // Check if there is overlapping with other bookings
-          let overlappingExists: boolean = false;
-          let bookings = await this.bookingRepository.find({
-            relations: ['client'],
-            where: { client: { apikey: key } },
-          });
-
-          // Remove the booking that we dont want anymore
-          bookings = bookings.filter((obj) => obj.id !== bookingId);
-
-          bookings.forEach((existingBooking) => {
-            if (!datetime || !duration) {
-              return {
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Missing datetime or duration',
-              };
-            }
-            if (
-              isOverlapping(existingBooking, {
-                datetime: datetime,
-                duration: duration,
-              })
-            ) {
-              overlappingExists = true; // Overlapping booking found
-              return; // Exit from forEach loop early
-            }
-          });
-
-          if (!overlappingExists) {
-            await this.bookingRepository.update(bookingId, {
-              datetime,
-              duration,
-              description,
-            });
-          } else {
-            return {
-              statusCode: HttpStatus.CONFLICT,
-              message: 'Booking failed. There is a scheduling conflict.',
-            };
-          }
-        } else {
-          return {
-            statusCode: HttpStatus.CONFLICT,
-            message: 'Sorry, booking already exists at this datetime.',
-          };
-        }
-
-        return {
-          statusCode: HttpStatus.OK,
-          message: 'Booking updated successfully!',
-        };
-      } else {
+  
+      if (!existingBooking) {
         return {
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Sorry, booking id requested doesnt exist.',
         };
       }
+  
+      // Busca todas as reservas do cliente
+      let bookings = await this.bookingRepository.find({
+        relations: ['client'],
+        where: { client: { apikey: key } },
+      });
+  
+      // Remove a própria reserva da lista (pois ela será atualizada)
+      bookings = bookings.filter((obj) => obj.id !== bookingId);
+  
+      // Verifica se já existe um booking para o mesmo horário
+      const conflictingBooking = bookings.find((b) => b.datetime === datetime);
+  
+      if (conflictingBooking) {
+        return {
+          statusCode: HttpStatus.CONFLICT,
+          message: 'Sorry, booking already exists at this datetime.',
+        };
+      }
+  
+      // Se passou todas as verificações, atualiza o booking
+      await this.bookingRepository.update(bookingId, {
+        datetime,
+        duration,
+        description,
+      });
+  
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Booking updated successfully!',
+      };
     } catch (error) {
+      console.error("❌ Erro ao atualizar booking:", error);
       return {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Sorry, something went wrong',
       };
     }
   }
-
+  
   async remove(key: string, bookingId: string) {
     try {
       const isBookingExists = await this.bookingRepository.find({

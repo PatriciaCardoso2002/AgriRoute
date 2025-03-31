@@ -11,9 +11,9 @@ function Home() {
       <img src={strawberries} alt="Agriculture and Transport" className="img-fluid home-image rounded shadow-sm mb-4" />
 
       {/* 📌 Título e Descrição */}
-      <h1 className="display-5 text-success fw-bold">Bem vindo(a) à AgriRoute</h1>
+      <h1 className="display-5 text-success fw-bold">Bem vindo(a) à AgriRoute!</h1>
       <p className="lead text-muted">
-      A plataforma que conecta produtores agrícolas, transportadores e consumidores, garantindo a entrega rápida e eficiente de produtos frescos em todo o país.
+      A plataforma que conecta produtores agrícolas,transportadores e consumidores, garantindo a entrega rápida e eficiente de produtos frescos em todo o país.
       </p>
 
       {/* 📊 Estatísticas Simuladas */}
