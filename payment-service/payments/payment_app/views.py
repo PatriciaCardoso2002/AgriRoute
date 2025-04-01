@@ -27,7 +27,8 @@ class CreatePaymentIntentView(APIView):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'transaction_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID da transação.")
+                        'transaction_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID da transação."),
+                        'status': openapi.Schema(type=openapi.TYPE_STRING, description="Status do PaymentIntent após confirmação.")
                     }
                 ),
             ),
@@ -45,7 +46,6 @@ class CreatePaymentIntentView(APIView):
                 amount=amount,
                 currency='eur',
                 description=description,
-                metadata={'user_id': user_id}
             )
 
             payment = Payment.objects.create(
@@ -54,11 +54,12 @@ class CreatePaymentIntentView(APIView):
                 currency='eur',
                 description=description,
                 user_id=user_id,
-                status='started'
+                status= payment_intent.status
             )
 
             return JsonResponse({
-                'transaction_id': payment.transaction_id
+                'transaction_id': payment.transaction_id,
+                'status': payment.status
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -86,18 +87,18 @@ class ConfirmPaymentView(APIView):
             400: "Erro ao confirmar o pagamento."
         }
     )
-    def post(self, request, payment_intent_id):
+    def post(self, request, payment_id):
         try:
             payment_method = request.data.get('payment_method')
             return_url = request.data.get('return_url')
 
             payment_intent = stripe.PaymentIntent.confirm(
-                payment_intent_id,
+                payment_id,
                 payment_method=payment_method,
                 return_url=return_url
             )
 
-            payment = Payment.objects.get(transaction_id=payment_intent_id)
+            payment = Payment.objects.get(transaction_id=payment_id)
             payment.status = payment_intent.status
             payment.save()
 
@@ -123,9 +124,9 @@ class PaymentStatusView(APIView):
             400: "Erro ao obter o status do PaymentIntent."
         }
     )
-    def get(self, request, payment_intent_id):
+    def get(self, request, payment_id):
         try:
-            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            payment_intent = stripe.PaymentIntent.retrieve(payment_id)
 
             return JsonResponse({
                 'status': payment_intent.status

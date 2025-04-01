@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
 // Import components
-import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile } from './components';
+import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile , PaymentProducer } from './components';
 import { useNavigate } from 'react-router-dom';
 import BookingService from './services/bookingService';
+import PaymentService from './services/paymentsService';
 
 function App() {
   const [userRole, setUserRole] = useState("");
@@ -127,9 +128,14 @@ function App() {
           </li>
         )}
         {isAuthenticated && userRole === "producer" && (
-          <li className="nav-item">
+         <>
+         <li className="nav-item">
             <Link to="/bookingProducer" className="nav-link">Booking Producer</Link>
           </li>
+          <li className="nav-item">
+           <Link to="/payment" className="nav-link btn btn-success text-white ms-2">Pagamentos</Link>
+          </li>
+        </>
         )}
       </ul>
 
@@ -166,6 +172,7 @@ function App() {
       <Route path="/bookingConsumer" element={<BookingConsumer />} />
       <Route path="/bookingTransporter" element={<BookingTransporter />} />
       <Route path="/bookingProducer" element={<BookingProducer />} />
+      <Route path="/payment" element={<PaymentProducer />} />
       <Route path="/login" element={<Login />} />
     </Routes>
   </div>

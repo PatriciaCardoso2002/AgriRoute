@@ -7,3 +7,4 @@ export { default as Logo } from './Logo';
 export { default as LoginButton } from './AuthLogin';
 export { default as Profile } from './AuthProfile';
 export { default as LogoutButton } from './AuthLogout';
+export { default as PaymentProducer } from './PaymentProducer';
