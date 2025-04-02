@@ -1,0 +1,5 @@
+python-dotenv
+openrouteservice
+fastapi[all] 
+geopy
+pydantic
