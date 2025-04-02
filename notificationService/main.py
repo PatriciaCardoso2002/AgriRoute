@@ -4,12 +4,13 @@ from app.auth import auth_router
 from app.notifications import notifications_router
 from app.socket_service import router as websocket_router
 from app.models import ClientKey, PaginatedResponse, ErrorResponse
-from app.database import get_api_db, init_db
+from app.database import get_api_db
 from sqlalchemy.orm import Session
 
 
 def startup():
     print("🔄 Inicializando o banco de dados...")
+    from app.database import init_db
     init_db()
     print("✅ Base de dados inicializado!")
 

@@ -48,15 +48,14 @@ def send_sms(to: str, message: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-async def send_push_notification(user_id: str, body: str):
+async def send_push_notification(user_id: str,type: str, body: str):
     """Envia uma notificação para um usuário específico via WebSocket"""
-    print(f"🔍 Buscando WebSocket para {user_id}...")
 
     if user_id in active_connections:
         websocket = active_connections[user_id]
         print(f"✅ WebSocket encontrado para {user_id}. Enviando mensagem...")
 
-        await websocket.send_text(f"🔔 Notificação para {user_id}: {body}")
+        await websocket.send_text(f"{type}: {body}")
         print(f"✅ Mensagem enviada para {user_id}: {body}")
     else:
         print(f"⚠ ERRO: Usuário {user_id} não está conectado ao WebSocket!")

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, get_db
+from app.database import SessionLocal, get_db, get_api_db
 from app.models import ErrorResponse, SuccessResponse, NotificationListResponse, NotificationDB, NotificationCreate, Company
 from app.service import send_email, send_sms, send_push_notification
 from app.auth import autenticar_empresa
+from app.socket_service import active_connections
 import re
 
 notifications_router = APIRouter(prefix="/v1/notifications", tags=["Notifications"])
@@ -331,52 +332,28 @@ async def create_notification_email(
             }
         },
         400: {
-            "description": "Bad Request - Invalid User ID",
+            "description": "Bad Request - Invalid User ID or Disconnected WebSocket",
             "model": ErrorResponse,
             "content": {
                 "application/json": {
                     "example": {
                         "error": {
-                            "message": "Invalid user ID. The recipient must be a valid registered user.",
-                            "type": "ValidationError",
+                            "message": "The user 'user1234' is not connected via WebSocket.",
+                            "type": "WebSocketConnectionError",
                             "code": 400,
-                            "trace_id": "ERR400-PUSH-XYZ"
+                            "trace_id": "ERR400-PUSH-NOCONNECTION"
                         }
                     }
                 }
             }
         },
         422: {
-            "description": "Unprocessable Entity - Missing Required Fields",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error": {
-                            "message": "Missing required fields: 'recipient' (user ID), 'title', or 'body'.",
-                            "type": "ValidationError",
-                            "code": 422,
-                            "trace_id": "ERR422-PUSH-XYZ"
-                        }
-                    }
-                }
-            }
+            "description": "Missing required fields",
+            "model": ErrorResponse
         },
         500: {
-            "description": "Internal Server Error - Push Notification Failure",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error": {
-                            "message": "An unexpected error occurred while sending the push notification.",
-                            "type": "ServerError",
-                            "code": 500,
-                            "trace_id": "ERR500-PUSH-XYZ"
-                        }
-                    }
-                }
-            }
+            "description": "Internal Server Error",
+            "model": ErrorResponse
         }
     }
 )
@@ -403,22 +380,27 @@ async def create_notification_push(
     print(f"📤 Tentando enviar notificação para {notification.recipient}...")
 
     try:
-        await send_push_notification(notification.recipient, notification.body)
-        print(f"✅ Notificação enviada com sucesso para {notification.recipient}")
-
-    except ValueError as ve:
-        print(f"❌ Erro ao enviar notificação (Usuário inválido): {str(ve)}")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": {
-                    "message": "Invalid user ID. The recipient must be a valid registered user.",
-                    "type": "ValidationError",
-                    "code": 400,
-                    "trace_id": "ERR400-PUSH-XYZ"
+        # Verifica se o usuário está conectado via WebSocket
+        if notification.recipient not in active_connections:
+            print(f"⚠ ERRO: Usuário {notification.recipient} não está conectado ao WebSocket!")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "message": f"The user '{notification.recipient}' is not connected via WebSocket.",
+                        "type": "WebSocketConnectionError",
+                        "code": 400,
+                        "trace_id": "ERR400-PUSH-NOCONNECTION"
+                    }
                 }
-            }
+            )
+
+        await send_push_notification(
+            notification.recipient,
+            notification.notification_type,
+            notification.body
         )
+        print(f"✅ Notificação enviada com sucesso para {notification.recipient}")
 
     except Exception as e:
         print(f"❌ Erro ao enviar notificação: {str(e)}")
@@ -438,6 +420,7 @@ async def create_notification_push(
         status="success", 
         message=f"Notification sent to {notification.recipient} via WebSocket"
     )
+
 
 @notifications_router.get(
     "",
@@ -492,8 +475,7 @@ async def create_notification_push(
 async def list_notifications(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
-    auth=Depends(autenticar_empresa),
-    db: Session = Depends(SessionLocal)
+    db: Session = Depends(get_db)
 ):
     """ Returns paginated list of sent notifications """
 

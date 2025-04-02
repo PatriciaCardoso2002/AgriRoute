@@ -11,11 +11,24 @@ ApiSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=api_engin
 Base = declarative_base()
 ApiBase = declarative_base()
 
-
 def init_db():
-    """Cria as tabelas no banco de dados central"""
-    Base.metadata.create_all(bind=engine)
-    ApiBase.metadata.create_all(bind=api_engine)
+    from app.models import NotificationDB, Company, User, ClientKey
+
+    print("🔄 Inicializando tabelas...")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tabelas no banco central criadas.")
+    except Exception as e:
+        print("❌ Erro ao criar tabelas no banco central:", e)
+
+    try:
+        ApiBase.metadata.create_all(bind=api_engine)
+        print("✅ Tabelas no banco api_keys criadas.")
+    except Exception as e:
+        print("❌ Erro ao criar tabelas no banco api_keys:", e)
+
+
 
 def get_db():
     """Gerador de sessão para o banco de dados central"""
