@@ -4,6 +4,7 @@ import "react-calendar/dist/Calendar.css";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./../styles/booking.css";
 import { getBookings, updateBooking } from "../services/bookingService";
+import RouteMap from "./RouteMap";
 
 function BookingTransporter() {
   const [date, setDate] = useState(new Date());
@@ -12,6 +13,7 @@ function BookingTransporter() {
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showMapForBooking, setShowMapForBooking] = useState(null); // Track which booking's map to show
   const { isAuthenticated, getIdTokenClaims } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
 
@@ -29,9 +31,8 @@ function BookingTransporter() {
     );
   };
 
-  // Format the selected date into YYYY-MM-DD format
   const formattedDate = toLocalISODate(date); 
-  // Parse pipe-separated description
+  
   const parseDescription = (desc) => {
     const result = {
       clientName: "",
@@ -39,18 +40,18 @@ function BookingTransporter() {
       product: "",
       quantity: "",
       notes: "",
-      userId: ""
+      userId: "",
+      pickupAddress: "",
+      deliveryAddress: ""
     };
     
     if (!desc) return result;
   
-    // Extrair User ID primeiro se existir
     if (desc.includes("User ID:")) {
       result.userId = desc.split("User ID:")[1].trim();
       desc = desc.split("User ID:")[0].trim();
     }
   
-    // Processar as outras partes
     const parts = desc.split("|").map(part => part.trim());
     
     parts.forEach(part => {
@@ -64,13 +65,16 @@ function BookingTransporter() {
         result.notes = part.replace("Notas:", "").trim();
       } else if (part.startsWith("Cliente:")) {
         result.clientName = part.replace("Cliente:", "").trim();
+      } else if (part.startsWith("Recolha:")) {
+        result.pickupAddress = part.replace("Recolha:", "").trim();
+      } else if (part.startsWith("Entrega:")) {
+        result.deliveryAddress = part.replace("Entrega:", "").trim();
       }
     });
     
     return result;
   };
 
-  // 1. Primeiro: Buscar dados de autenticação
   useEffect(() => {
     const fetchAuthData = async () => {
       try {
@@ -104,13 +108,11 @@ function BookingTransporter() {
     else setAuthReady(false);
   }, [isAuthenticated, getIdTokenClaims]);
 
-  // Load user name
   useEffect(() => {
     const storedUsername = localStorage.getItem("nickname") || "Transportador";
     setUsername(storedUsername);
   }, []);
 
-  // 2. Segundo: Buscar bookings (só executa quando authReady = true)
   useEffect(() => {
     if (!authReady) return;
 
@@ -123,22 +125,18 @@ function BookingTransporter() {
 
       setLoading(true);
       try {
-        // Get all bookings (no filtering by user as we want all Agriroute bookings)
         const response = await getBookings(apiKey);
         const allBookings = response.data || [];
 
-        // Get dates with bookings (normalized to YYYY-MM-DD format)
         const bookingDates = [...new Set(
           allBookings.map(b => new Date(b.datetime).toISOString().split('T')[0])
         )];
         setDatesWithBookings(bookingDates);
 
-        // Filter bookings for the selected date
         const dateBookings = allBookings.filter(b => 
           isSameDate(new Date(b.datetime), date)
         );
 
-        // Format bookings for display
         const formattedBookings = dateBookings.map(booking => {
           const desc = parseDescription(booking.description);
           
@@ -154,6 +152,8 @@ function BookingTransporter() {
             quantity: desc.quantity || "Quantidade não especificada",
             status: desc.status || "Pendente",
             notes: desc.notes || "Sem observações",
+            pickupAddress: desc.pickupAddress || "Não especificado",
+            deliveryAddress: desc.deliveryAddress || "Não especificado",
             rawDescription: booking.description
           };
         });
@@ -180,19 +180,17 @@ function BookingTransporter() {
       const bookingToUpdate = bookings.find(b => b.id === bookingId);
       if (!bookingToUpdate) return;
   
-      // Parse a descrição existente de forma mais robusta
       const descParts = {
         clientName: bookingToUpdate.clientName || "",
         product: bookingToUpdate.product || "",
         quantity: bookingToUpdate.quantity || "",
-        status: newStatus, // Novo status
+        status: newStatus,
         notes: bookingToUpdate.notes || "",
         userId: bookingToUpdate.rawDescription.includes("User ID:") 
           ? bookingToUpdate.rawDescription.split("User ID:")[1].trim()
           : ""
       };
   
-      // Construa a nova descrição de forma consistente
       const updatedDesc = [
         `Produto: ${descParts.product}`,
         `Quantidade: ${descParts.quantity}`,
@@ -201,17 +199,10 @@ function BookingTransporter() {
         descParts.userId ? `User ID: ${descParts.userId}` : ""
       ].filter(Boolean).join(" | ");
   
-      // Debug: Mostrar o que será enviado
-      console.log("Updating booking with:", {
-        id: bookingId,
-        description: updatedDesc
-      });
-  
       await updateBooking(bookingId, { 
         description: updatedDesc 
       }, apiKey);
       
-      // Recarregue os bookings do servidor após a atualização
       const response = await getBookings(apiKey);
       const allBookings = response.data || [];
       
@@ -233,6 +224,8 @@ function BookingTransporter() {
           quantity: desc.quantity || "Quantidade não especificada",
           status: desc.status || "Pendente",
           notes: desc.notes || "Sem observações",
+          pickupAddress: desc.pickupAddress || "Não especificado",
+          deliveryAddress: desc.deliveryAddress || "Não especificado",
           rawDescription: booking.description
         };
       });
@@ -245,8 +238,17 @@ function BookingTransporter() {
       alert("Erro ao atualizar status. Verifique o console para mais detalhes.");
     }
   };
+
   const handleBookingClick = (booking) => {
     setSelectedBooking(booking);
+  };
+
+  const toggleMap = (bookingId) => {
+    if (showMapForBooking === bookingId) {
+      setShowMapForBooking(null);
+    } else {
+      setShowMapForBooking(bookingId);
+    }
   };
 
   return (
@@ -274,6 +276,26 @@ function BookingTransporter() {
             padding: 15px;
             border-radius: 5px;
             margin-top: 15px;
+          }
+          .map-container {
+            height: 300px;
+            width: 100%;
+            margin: 15px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+          }
+          .btn-route {
+            margin-top: 10px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+          .btn-route:hover {
+            background-color: #3e8e41;
           }
         `}
       </style>
@@ -317,6 +339,8 @@ function BookingTransporter() {
                   {booking.time} - {booking.product}
                 </h5>
                 <p><strong>Quantidade:</strong> {booking.quantity}</p>
+                <p><strong>Recolha:</strong> {booking.pickupAddress || "Não especificado"}</p>
+                <p><strong>Entrega:</strong> {booking.deliveryAddress || "Não especificado"}</p>
                 <p><strong>Observações:</strong> {booking.notes}</p>
                 <p>
                   <strong>Status:</strong> 
@@ -324,50 +348,42 @@ function BookingTransporter() {
                     {booking.status}
                   </span>
                 </p>
+
+                <div className="status-selector mt-3">
+                  <label htmlFor={`status-${booking.id}`} className="form-label">
+                    <strong>Alterar Status:</strong>
+                  </label>
+                  <select
+                    id={`status-${booking.id}`}
+                    className={`form-select status-${booking.status.toLowerCase()}`}
+                    value={booking.status}
+                    onChange={(e) => handleStatusChange(booking.id, e.target.value)}
+                  >
+                    <option value="Pendente" className="status-pendente">Pendente</option>
+                    <option value="Confirmado" className="status-confirmado">Confirmado</option>
+                    <option value="Em Transporte" className="status-transporte">Em Transporte</option>
+                    <option value="Concluído" className="status-concluido">Concluído</option>
+                    <option value="Cancelado" className="status-cancelado">Cancelado</option>
+                  </select>
+                </div>
                 
-                {selectedBooking && selectedBooking.id === booking.id && (
+                <button 
+                  className="btn-route"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering the parent click handler
+                    toggleMap(booking.id);
+                  }}
+                >
+                  {showMapForBooking === booking.id ? "Ocultar Rota" : "Ver Rota"}
+                </button>
+                
+                {showMapForBooking === booking.id && (
                   <div className="booking-details">
-                    <div className="btn-group">
-                      <button 
-                        className="btn btn-success btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(booking.id, "Confirmado");
-                        }}
-                        disabled={booking.status === "Confirmado"}
-                      >
-                        Confirmar
-                      </button>
-                      <button 
-                        className="btn btn-warning btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(booking.id, "Pendente");
-                        }}
-                        disabled={booking.status === "Pendente"}
-                      >
-                        Pendente
-                      </button>
-                      <button 
-                        className="btn btn-danger btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(booking.id, "Cancelado");
-                        }}
-                        disabled={booking.status === "Cancelado"}
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                        className="btn btn-info btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(booking.id, "Concluído");
-                        }}
-                        disabled={booking.status === "Concluído"}
-                      >
-                        Concluir
-                      </button>
+                    <div className="map-container">
+                      <RouteMap 
+                        origem={booking.pickupAddress || "Não especificado"}
+                        destino={booking.deliveryAddress || "Não especificado"}
+                      />
                     </div>
                   </div>
                 )}

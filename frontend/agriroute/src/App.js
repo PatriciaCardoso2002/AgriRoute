@@ -5,12 +5,15 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile } from './components';
 import { useNavigate } from 'react-router-dom';
 import BookingService from './services/bookingService';
+import NotificationSocket from './components/NotificationSocket';
+
 
 function App() {
   const [userRole, setUserRole] = useState("");
   const {isAuthenticated, getIdTokenClaims } = useAuth0();
   const [hasRedirectedAfterLogin, setHasRedirectedAfterLogin] = useState(false);
   const navigate = useNavigate();
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
 
@@ -37,6 +40,9 @@ function App() {
       localStorage.setItem("nickname", nick);
       const claim = claims || "claims";  // Aqui está o client id do Auth0
       console.log("🔐 claims do user:", claim);
+
+      const cleanUserId = claims.sub.substring(6);
+      setUserId(cleanUserId);
       
       // try {
       //   // Verifica se já existe o client no Booking API
@@ -168,6 +174,7 @@ function App() {
       <Route path="/bookingProducer" element={<BookingProducer />} />
       <Route path="/login" element={<Login />} />
     </Routes>
+    {isAuthenticated && userId && <NotificationSocket userId={userId} />}
   </div>
 </header>
       </div>

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from routes import routes
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Routing API (using Heigit)",
@@ -9,4 +9,18 @@ app = FastAPI(
     docs_url="/api/docs",
 )
 
-app.include_router(routes); 
+origins = [
+    "http://localhost:3000",  # React em dev
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # ou ["*"] para tudo (em dev)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+app.include_router(routes);

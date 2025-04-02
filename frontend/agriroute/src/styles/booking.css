@@ -151,4 +151,35 @@
       font-size: 14px;
     }
   }
+  .status-selector .form-select.status-pendente {
+    color: #ffc107;
+    border-color: #ffc107;
+    background-color: #fff9e6;
+  }
+  
+  .status-selector .form-select.status-confirmado {
+    color: #28a745;
+    border-color: #28a745;
+    background-color: #e6ffee;
+  }
+  
+  .status-selector .form-select.status-transporte {
+    color: #17a2b8;
+    border-color: #17a2b8;
+    background-color: #e6f7fa;
+  }
+  
+  .status-selector .form-select.status-concluido {
+    color: #6c757d;
+    border-color: #6c757d;
+    background-color: #f8f9fa;
+  }
+  
+  .status-selector .form-select.status-cancelado {
+    color: #dc3545;
+    border-color: #dc3545;
+    background-color: #ffebee;
+  }
+
+
   

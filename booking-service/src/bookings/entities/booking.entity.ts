@@ -12,7 +12,7 @@ export class Booking {
   @Column({ type: 'int' })
   duration: number; //  seconds
 
-  @Column({ type: 'varchar', length: 150 })
+  @Column({ type: 'varchar', length: 500})
   description: string;
 
   @ManyToOne(() => Client, (client) => client.booking)

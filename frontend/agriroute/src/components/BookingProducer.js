@@ -16,7 +16,9 @@ function BookingProducer() {
     product: "",
     quantity: "",
     time: "",
-    notes: ""
+    notes: "",
+    pickupAddress: "",
+    deliveryAddress: ""
   });
 
   const toLocalISODate = (date) => {
@@ -89,6 +91,8 @@ function BookingProducer() {
             time: "",
             status: "Pendente",
             notes: "",
+            pickupAddress: "",
+            deliveryAddress: "",
             rawData: b
           };
         
@@ -97,6 +101,8 @@ function BookingProducer() {
             if (part.startsWith("Quantidade:")) result.quantity = part.replace("Quantidade:", "").trim();
             if (part.startsWith("Status:")) result.status = part.replace("Status:", "").trim();
             if (part.startsWith("Notas:")) result.notes = part.replace("Notas:", "").trim();
+            if (part.startsWith("Recolha:")) result.pickupAddress = part.replace("Recolha:", "").trim();
+            if (part.startsWith("Entrega:")) result.deliveryAddress = part.replace("Entrega:", "").trim();
           });
         
           if (b.datetime) {
@@ -128,10 +134,10 @@ function BookingProducer() {
 
   const handleAddEvent = async (e) => {
     e.preventDefault();
-    const { product, quantity, time, notes } = newEvent;
+    const { product, quantity, time, notes, pickupAddress, deliveryAddress } = newEvent;
 
-    if (!product || !quantity || !time) {
-      alert("Produto, quantidade e hora são obrigatórios.");
+    if (!product || !quantity || !time || !pickupAddress || !deliveryAddress) {
+      alert("Todos os campos são obrigatórios, exceto observações.");
       return;
     }
 
@@ -157,7 +163,8 @@ function BookingProducer() {
     const apiKey = localStorage.getItem("apikey");
     const userId = claims.sub;
     
-    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'}`;
+    // No handleAddEvent do BookingProducer, substitua a criação da descrição por:
+    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
 
     const bookingData = {
       datetime: datetime.toISOString(),
@@ -178,6 +185,8 @@ function BookingProducer() {
             quantity,
             time: formattedTime.slice(0, 5),
             notes: notes || "Sem observações",
+            pickupAddress,
+            deliveryAddress,
             status: "Pendente",
             description
           },
@@ -188,7 +197,9 @@ function BookingProducer() {
         product: "", 
         quantity: "", 
         time: "", 
-        notes: ""
+        notes: "",
+        pickupAddress: "",
+        deliveryAddress: ""
       });
     } catch (error) {
       console.error("❌ Erro ao criar booking:", error);
@@ -250,11 +261,13 @@ function BookingProducer() {
             {selectedEvents.map((event, index) => (
               <div key={index} className="agenda-item">
                 <h5>{event.product} - {event.quantity}</h5>
-                <p>{event.time}</p>
+                <p>{event.time}h</p>
+                <p><strong>Recolha:</strong> {event.pickupAddress || "Não especificado"}</p>
+                <p><strong>Entrega:</strong> {event.deliveryAddress || "Não especificado"}</p>
+                {event.notes && <p><strong>Observações:</strong> {event.notes}</p>}
                 <p className={`status-${event.status.toLowerCase()}`}>
                   Status: {event.status}
                 </p>
-                {event.notes && <p>Observações: {event.notes}</p>}
               </div>
             ))}
           </div>
@@ -295,6 +308,30 @@ function BookingProducer() {
                 value={newEvent.time}
                 onChange={handleInputChange}
                 className="form-control"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Morada de Recolha:</label>
+              <input
+                type="text"
+                name="pickupAddress"
+                value={newEvent.pickupAddress}
+                onChange={handleInputChange}
+                className="form-control"
+                placeholder="Local onde os produtos serão recolhidos"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Morada de Entrega:</label>
+              <input
+                type="text"
+                name="deliveryAddress"
+                value={newEvent.deliveryAddress}
+                onChange={handleInputChange}
+                className="form-control"
+                placeholder="Local onde os produtos serão entregues"
                 required
               />
             </div>

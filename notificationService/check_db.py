@@ -5,7 +5,7 @@ import psycopg2
 
 load_dotenv()
 
-print("🔍 Variáveis lidas:")
+print("Variáveis lidas:")
 print("DB:", os.getenv("POSTGRES_DB"))
 print("USER:", os.getenv("POSTGRES_USER"))
 print("PWD:", os.getenv("POSTGRES_PASSWORD"))
@@ -22,12 +22,12 @@ while retries > 0:
             port=os.getenv("POSTGRES_PORT", "5432")
         )
         conn.close()
-        print("✅ Banco de dados pronto!")
+        print("Banco de dados pronto!")
         sys.exit(0)
     except Exception as e:
-        print(f"❌ Tentativa {10 - retries + 1}/10:", e)
+        print(f"Tentativa {10 - retries + 1}/10:", e)
         retries -= 1
         sleep(5)
 
-print("🚨 Banco de dados não respondeu a tempo.")
+print("Banco de dados não respondeu a tempo.")
 sys.exit(1)
