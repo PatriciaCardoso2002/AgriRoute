@@ -7,7 +7,7 @@ export const createPaymentIntent = async (apiKey, amount, description, userId) =
       { amount,
         description, 
         user_id: userId 
-        },
+    },
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
     return response.data;
