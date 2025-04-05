@@ -3,6 +3,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./../styles/booking.css";
+import { useNavigate } from "react-router-dom";
 import { createBooking, getBookingsByUser } from "../services/bookingService";
 
 function BookingProducer() {
@@ -27,6 +28,7 @@ function BookingProducer() {
     return localDate.toISOString().split("T")[0];
   };
 
+  const navigate = useNavigate();
   const formattedDate = toLocalISODate(date);
 
   useEffect(() => {
@@ -175,7 +177,7 @@ function BookingProducer() {
     try {
       await createBooking(bookingData, apiKey, userId);
       alert("✅ Pedido criado com sucesso!");
-
+      navigate("checkout");
       setEvents((prevEvents) => ({
         ...prevEvents,
         [formattedDate]: [
@@ -346,7 +348,7 @@ function BookingProducer() {
                 rows="3"
               />
             </div>
-            <button type="submit" className="btn btn-success">
+            <button type="submit" className="btn btn-success" onClick={handleAddEvent}>
               Adicionar
             </button>
           </form>
