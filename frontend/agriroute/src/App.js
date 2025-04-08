@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+
+
 // Import components
 import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile, CheckoutPayment } from './components';
 import { useNavigate } from 'react-router-dom';

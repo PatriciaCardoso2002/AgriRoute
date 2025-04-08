@@ -211,6 +211,7 @@ function BookingProducer() {
       }
       alert(errorMsg);
     }
+    navigate("/checkout");
   };
 
   return (

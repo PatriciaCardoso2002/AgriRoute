@@ -1,83 +1,108 @@
-// === CheckoutPayment.jsx ===
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { useAuth0 } from "@auth0/auth0-react";
-import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
-import { createPaymentIntent, confirmCardPayment } from "../services/paymentsService";
+import { Button, Form, Alert, Spinner } from 'react-bootstrap';
+import "./../styles/checkout.css";
 
-function CheckoutPayment() {
+const CheckoutPayment = () => {
   const stripe = useStripe();
   const elements = useElements();
-  const [amount, setAmount] = useState("");
+  const { getIdTokenClaims } = useAuth0(); 
+  const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { isAuthenticated, getIdTokenClaims } = useAuth0();
+  const [userId, setUserId] = useState(null); 
+  const [error, setError] = useState(null); 
+  const [success, setSuccess] = useState(false); 
+  const [amount] = useState(1000); 
 
   useEffect(() => {
     const fetchUserId = async () => {
-      const claims = await getIdTokenClaims();
-      if (claims) localStorage.setItem("userId", claims.sub);
+      try {
+        console.log("Tentando obter claims...");
+        const claims = await getIdTokenClaims();  // Obtendo os claims do token
+        if (claims) {
+          const userId = claims.sub;  // O userId geralmente vem do claims.sub
+          console.log("userId obtido:", userId);
+          setUserId(userId);  // Armazenando o userId no estado
+          localStorage.setItem("userId", userId);  // Salvando no localStorage, se necessário
+        } else {
+          console.log("Não foi possível obter os claims.");
+        }
+      } catch (error) {
+        console.error("Erro ao obter os claims do token:", error);
+      }
     };
-    if (isAuthenticated) fetchUserId();
-  }, [isAuthenticated, getIdTokenClaims]);
+
+    fetchUserId();
+  }, [getIdTokenClaims]);  // Executa quando o getIdTokenClaims estiver disponível
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
+    console.log("Iniciando pagamento...");
+
+    setIsProcessing(true);
 
     try {
-      const userId = localStorage.getItem("userId");
-      if (!userId) throw new Error("Usuário não autenticado.");
+      const res = await fetch("http://localhost:8000/v1/payments/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: userId }) 
+      });
 
-      const paymentIntent = await createPaymentIntent(
-        parseFloat(amount) * 100,
-        userId
-      );
+      const { clientSecret  } = await res.json();
+      
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+        },
+      });
 
-       // Verificando se o Stripe e o Elements estão carregados corretamente
-      if (!stripe || !elements) {
-        setMessage("Stripe ainda não está carregado.");
-        return;
+      if (result.error) {
+        setMessage(`❌ Erro no pagamento: ${result.error.message}`);
+      } else if (result.paymentIntent.status === "succeeded") {
+        setMessage("✅ Pagamento feito com sucesso!");
       }
 
-      const result = await confirmCardPayment(paymentIntent.transaction_id);
-
-      if (result.status === "succeeded") {
-        setMessage("✅ Pagamento confirmado com sucesso!");
-        setAmount("");
-      } else {
-        setMessage(`⚠️ Pagamento com status: ${result.status}`);
-      }
     } catch (err) {
-      setMessage("❌ " + err.message);
-    } finally {
-      setLoading(false);
+      setMessage(`❌ Erro: ${err.message}`);
     }
+
+    setIsProcessing(false);
   };
 
   return (
-    <div style={{ maxWidth: "500px", margin: "0 auto", padding: "2rem" }}>
-      <h2>Checkout Seguro</h2>
-      <form onSubmit={handleSubmit}>
-        <label>Valor (€)</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Ex: 20"
-          required
-        />
-        <label>Cartão</label>
-        <div style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "6px", marginBottom: "1rem" }}>
-          <CardElement />
+    <div className="checkout-container">
+      <h2>Pagamento Seguro</h2>
+
+      <div className="checkout-content">
+        <div className="checkout-form">
+          <Form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <Form.Label>Detalhes do cartão</Form.Label>
+              <CardElement className="card-element" />
+            </div>
+
+            {message && <Alert variant={success ? "success" : "danger"}>{message}</Alert>}
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={isProcessing || !stripe || !elements}
+              className="submit-button"
+            >
+              {isProcessing ? <Spinner animation="border" size="sm" /> : 'Pagar agora'}
+            </Button>
+          </Form>
         </div>
-        <button type="submit" disabled={!stripe || loading}>
-          {loading ? "Processando..." : "Pagar"}
-        </button>
-      </form>
-      {message && <p style={{ marginTop: "1rem" }}>{message}</p>}
+
+        <div className="checkout-summary">
+          <h4>Resumo do pagamento</h4>
+          <p><strong>Total:</strong> €{(amount / 100).toFixed(2)}</p>
+        </div>
+      </div>
     </div>
   );
-}
+};
 
 export default CheckoutPayment;
