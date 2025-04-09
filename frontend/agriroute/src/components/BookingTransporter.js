@@ -13,7 +13,7 @@ function BookingTransporter() {
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [showMapForBooking, setShowMapForBooking] = useState(null); // Track which booking's map to show
+  const [showMapForBooking, setShowMapForBooking] = useState(null);
   const { isAuthenticated, getIdTokenClaims } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
 
@@ -32,7 +32,7 @@ function BookingTransporter() {
   };
 
   const formattedDate = toLocalISODate(date); 
-  
+
   const parseDescription = (desc) => {
     const result = {
       clientName: "",
@@ -42,18 +42,19 @@ function BookingTransporter() {
       notes: "",
       userId: "",
       pickupAddress: "",
-      deliveryAddress: ""
+      deliveryAddress: "",
+      date: formattedDate
     };
-    
+
     if (!desc) return result;
-  
+
     if (desc.includes("User ID:")) {
       result.userId = desc.split("User ID:")[1].trim();
       desc = desc.split("User ID:")[0].trim();
     }
-  
+
     const parts = desc.split("|").map(part => part.trim());
-    
+
     parts.forEach(part => {
       if (part.startsWith("Produto:")) {
         result.product = part.replace("Produto:", "").trim();
@@ -69,10 +70,34 @@ function BookingTransporter() {
         result.pickupAddress = part.replace("Recolha:", "").trim();
       } else if (part.startsWith("Entrega:")) {
         result.deliveryAddress = part.replace("Entrega:", "").trim();
+      } else if (part.startsWith("Email Produtor:")) {
+        result.produtorEmail = part.replace("Email Produtor:", "").trim();
+      } else if (part.startsWith("Telemóvel Produtor:")) {
+        result.produtorTelemovel = part.replace("Telemóvel Produtor:", "").trim();
+      } else if (part.startsWith("Email Consumidor:")) {
+        result.consumidorEmail = part.replace("Email Consumidor:", "").trim();
+      } else if (part.startsWith("Telemóvel Consumidor:")) {
+        result.consumidorTelemovel = part.replace("Telemóvel Consumidor:", "").trim();
+      } else if (part.startsWith("Data:")) {
+        result.date = part.replace("Data:", "").trim();
       }
     });
-    
+
     return result;
+  };
+
+  const includeDateInDescription = (description, dateValue) => {
+    const dataString = `Data: ${dateValue}`;
+    if (description.includes("Data:")) {
+      return description.replace(/Data:[^|]*/, dataString);
+    } else {
+      return description + ` | ${dataString}`;
+    }
+  };
+
+  // Função auxiliar para o popup
+  const showArrivalPopup = (hora, data) => {
+    alert(`🕒 Entrega prevista para ${data} às ${hora}`);
   };
 
   useEffect(() => {
@@ -154,7 +179,11 @@ function BookingTransporter() {
             notes: desc.notes || "Sem observações",
             pickupAddress: desc.pickupAddress || "Não especificado",
             deliveryAddress: desc.deliveryAddress || "Não especificado",
-            rawDescription: booking.description
+            rawDescription: booking.description,
+            produtorEmail: desc.produtorEmail,
+            produtorTelemovel: desc.produtorTelemovel,
+            consumidorEmail: desc.consumidorEmail,
+            consumidorTelemovel: desc.consumidorTelemovel,
           };
         });
 
@@ -179,65 +208,127 @@ function BookingTransporter() {
     try {
       const bookingToUpdate = bookings.find(b => b.id === bookingId);
       if (!bookingToUpdate) return;
+      console.log("📄 Descrição bruta do booking:", bookingToUpdate.rawDescription);
   
+      // Construção dos dados da descrição
       const descParts = {
         clientName: bookingToUpdate.clientName || "",
         product: bookingToUpdate.product || "",
         quantity: bookingToUpdate.quantity || "",
         status: newStatus,
         notes: bookingToUpdate.notes || "",
-        userId: bookingToUpdate.rawDescription.includes("User ID:") 
+        pickupAddress: bookingToUpdate.pickupAddress || "",
+        deliveryAddress: bookingToUpdate.deliveryAddress || "",
+        produtorEmail: bookingToUpdate.produtorEmail || "",
+        produtorTelemovel: bookingToUpdate.produtorTelemovel || "",
+        consumidorEmail: bookingToUpdate.consumidorEmail || "",
+        consumidorTelemovel: bookingToUpdate.consumidorTelemovel || "",
+        userId: bookingToUpdate.rawDescription.includes("User ID:")
           ? bookingToUpdate.rawDescription.split("User ID:")[1].trim()
           : ""
       };
   
+      // Nova descrição a ser guardada no backend
       const updatedDesc = [
         `Produto: ${descParts.product}`,
         `Quantidade: ${descParts.quantity}`,
         `Status: ${descParts.status}`,
         `Notas: ${descParts.notes}`,
+        `Recolha: ${descParts.pickupAddress}`,
+        `Entrega: ${descParts.deliveryAddress}`,
+        `Email Produtor: ${descParts.produtorEmail}`,
+        `Telemóvel Produtor: ${descParts.produtorTelemovel}`,
+        `Email Consumidor: ${descParts.consumidorEmail}`,
+        `Telemóvel Consumidor: ${descParts.consumidorTelemovel}`,
         descParts.userId ? `User ID: ${descParts.userId}` : ""
       ].filter(Boolean).join(" | ");
   
-      await updateBooking(bookingId, { 
-        description: updatedDesc 
+      // Atualiza no backend
+      await updateBooking(bookingId, {
+        description: updatedDesc
       }, apiKey);
+  
+      // Se o novo status for "Confirmado", chama a API de previsão de chegada
+      if (newStatus === "Confirmado") {
+        if (!descParts.pickupAddress || !descParts.deliveryAddress) {
+          alert("❌ Moradas de origem ou destino estão em falta!");
+          return;
+        }
+  
+        const queryParams = new URLSearchParams({
+          origem: descParts.pickupAddress,
+          destino: descParts.deliveryAddress,
+          email_produtor: descParts.produtorEmail,
+          telemovel_produtor: descParts.produtorTelemovel,
+          email_consumidor: descParts.consumidorEmail,
+          telemovel_consumidor: descParts.consumidorTelemovel
+        });
+        console.log("🔍 Dados para notificação:", {
+          email_produtor: descParts.produtorEmail,
+          telemovel_produtor: descParts.produtorTelemovel,
+          email_consumidor: descParts.consumidorEmail,
+          telemovel_consumidor: descParts.telemovelConsumidor
+        });
+        
+  
+        try {
+            const response = await fetch(`http://localhost:8000/v1/routing/prev_Arrival?${queryParams}`);
+            const arrivalData = await response.json();
+          
+            if (response.ok) {
+              console.log("✅ Notificação enviada com sucesso:", arrivalData);
+              alert(`🕒 Hora estimada de chegada: ${arrivalData.hora_estimada_chegada}`);
+              if (response.ok) {
+                alert(`🕒 Hora estimada de chegada: ${arrivalData.hora_estimada_chegada}`);
+              } else {
+                console.error("❌ Erro ao chamar prev_Arrival:", arrivalData);
+                alert("Erro ao obter previsão de chegada.");
+              }
+            } else {
+              console.error("❌ Erro ao chamar prev_Arrival:", arrivalData);
+              alert("Erro ao obter previsão de chegada.");
+            }
+        } catch (err) {
+          console.error("❌ Erro na comunicação com o backend:", err);
+          alert("Não foi possível contactar o serviço de rota.");
+        }
       
-      const response = await getBookings(apiKey);
-      const allBookings = response.data || [];
-      
-      const dateBookings = allBookings.filter(b => 
+      }
+  
+      alert(`Status atualizado para "${newStatus}"`);
+  
+      // Atualiza bookings no estado
+      const refreshed = await getBookings(apiKey);
+      const allBookings = refreshed.data || [];
+      const filtered = allBookings.filter(b =>
         new Date(b.datetime).toISOString().split('T')[0] === formattedDate
       );
   
-      const formattedBookings = dateBookings.map(booking => {
+      setBookings(filtered.map(booking => {
         const desc = parseDescription(booking.description);
         return {
           id: booking.bookingId || booking.id,
           datetime: new Date(booking.datetime),
-          time: new Date(booking.datetime).toLocaleTimeString('pt-PT', { 
-            hour: "2-digit", 
-            minute: "2-digit",
-            hour12: false 
-          }),
-          product: desc.product || "Produto não especificado",
-          quantity: desc.quantity || "Quantidade não especificada",
-          status: desc.status || "Pendente",
-          notes: desc.notes || "Sem observações",
-          pickupAddress: desc.pickupAddress || "Não especificado",
-          deliveryAddress: desc.deliveryAddress || "Não especificado",
+          time: new Date(booking.datetime).toLocaleTimeString('pt-PT', { hour: "2-digit", minute: "2-digit", hour12: false }),
+          product: desc.product,
+          quantity: desc.quantity,
+          status: desc.status,
+          notes: desc.notes,
+          pickupAddress: desc.pickupAddress,
+          deliveryAddress: desc.deliveryAddress,
+          produtorEmail: desc.produtorEmail,
+          produtorTelemovel: desc.produtorTelemovel,
+          consumidorEmail: desc.consumidorEmail,
+          consumidorTelemovel: desc.consumidorTelemovel,
           rawDescription: booking.description
         };
-      });
+      }));
   
-      setBookings(formattedBookings);
-      
-      alert(`Status atualizado para "${newStatus}"`);
     } catch (error) {
       console.error("❌ Erro ao atualizar status:", error);
-      alert("Erro ao atualizar status. Verifique o console para mais detalhes.");
+      alert("Erro ao atualizar status.");
     }
-  };
+  };  
 
   const handleBookingClick = (booking) => {
     setSelectedBooking(booking);
@@ -361,7 +452,7 @@ function BookingTransporter() {
                   >
                     <option value="Pendente" className="status-pendente">Pendente</option>
                     <option value="Confirmado" className="status-confirmado">Confirmado</option>
-                    <option value="Em Transporte" className="status-transporte">Em Transporte</option>
+                    <option value="Transporte" className="status-transporte">Transporte</option>
                     <option value="Concluído" className="status-concluido">Concluído</option>
                     <option value="Cancelado" className="status-cancelado">Cancelado</option>
                   </select>

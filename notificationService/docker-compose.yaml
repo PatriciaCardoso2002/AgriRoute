@@ -10,9 +10,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+      - 5431:${POSTGRES_PORT}
     volumes:
-      - postgres_data:/var/lib/postgres/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "localhost", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       start_period: 10s
@@ -21,7 +21,7 @@ services:
       retries: 5
     networks:
       - all
-    
+
   api:
     build: .  
     container_name: fastapi_service
@@ -38,6 +38,48 @@ services:
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - all
+
+  kafka:
+    image: confluentinc/cp-kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - all
+
+  notification-service:
+    image: python:3.11
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: >
+      sh -c "pip install kafka-python requests &&
+            pip install python-dotenv &&
+            python -u consumer.py"
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    networks:
+      - all
 
 volumes:
   postgres_data:

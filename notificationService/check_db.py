@@ -19,7 +19,7 @@ while retries > 0:
             user=os.getenv("POSTGRES_USER"),
             password=os.getenv("POSTGRES_PASSWORD"),
             host="127.0.0.1",
-            port=os.getenv("POSTGRES_PORT", "5432")
+            port=os.getenv("POSTGRES_PORT", "5431")
         )
         conn.close()
         print("Banco de dados pronto!")

@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { BookingsModule } from './bookings/bookings.module';
 import { ClientsModule } from './clients/clients.module';
 import { VersioningType } from '@nestjs/common';
+import { startKafkaProducer } from './kafka/kafka.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -60,6 +61,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/bookings', app, bookingDocument);
   SwaggerModule.setup('api/clients', app, clientDocument);
 
+  await startKafkaProducer(); 
   await app.listen(process.env.PORT ?? 5000);
 }
 bootstrap();

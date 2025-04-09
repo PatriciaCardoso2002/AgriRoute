@@ -1,0 +1,19 @@
+{
+    "estado_pedido": {
+      "destinatarios": {
+        "produtor": ["email", "sms", "push"]
+      }
+    },
+    "prev_chegada": {
+      "destinatarios": {
+        "produtor": ["email", "sms", "push"],
+        "consumidor": ["email", "sms"]
+      }
+    },
+    "novos_pedidos": {
+      "destinatarios": {
+        "transportador": ["email", "sms", "push"]
+      }
+    }
+}
+  

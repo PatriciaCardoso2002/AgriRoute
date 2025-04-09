@@ -9,7 +9,7 @@ function BookingProducer() {
   const [date, setDate] = useState(new Date());
   const [username, setUsername] = useState("");
   const [events, setEvents] = useState({}); 
-  const { isAuthenticated, getIdTokenClaims } = useAuth0();
+  const { isAuthenticated, getIdTokenClaims, user } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [newEvent, setNewEvent] = useState({
@@ -18,8 +18,11 @@ function BookingProducer() {
     time: "",
     notes: "",
     pickupAddress: "",
-    deliveryAddress: ""
+    deliveryAddress: "",
+    consumerEmail: "",
+    consumerPhone: ""
   });
+  
 
   const toLocalISODate = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
@@ -141,7 +144,6 @@ function BookingProducer() {
       return;
     }
 
-    // Corrigir formatação do tempo
     const [hours, minutes] = time.split(':');
     const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
     
@@ -162,18 +164,21 @@ function BookingProducer() {
 
     const apiKey = localStorage.getItem("apikey");
     const userId = claims.sub;
+    const email = user?.email || "";
+    const telemovel = localStorage.getItem("userPhone") || "";
     
-    // No handleAddEvent do BookingProducer, substitua a criação da descrição por:
-    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
+    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | Email Produtor: ${user?.email || ''} | Telemóvel Produtor: ${telemovel} | Email Consumidor: ${newEvent.consumerEmail} | Telemóvel Consumidor: ${newEvent.consumerPhone} | User ID: ${userId}`;
 
     const bookingData = {
       datetime: datetime.toISOString(),
       duration: 3600,
       description,
+      ...(user?.email && { email: user.email }),
+      ...(user?.phone_number && { telemovel: user.phone_number }),
     };
 
     try {
-      await createBooking(bookingData, apiKey, userId);
+      await createBooking(bookingData, apiKey);
       alert("✅ Pedido criado com sucesso!");
 
       setEvents((prevEvents) => ({
@@ -344,6 +349,31 @@ function BookingProducer() {
                 className="form-control"
                 placeholder="Informações adicionais para o transportador"
                 rows="3"
+              />
+            </div>
+            <div className="form-group">
+              <label>Email do Consumidor:</label>
+              <input
+                type="email"
+                name="consumerEmail"
+                value={newEvent.consumerEmail}
+                onChange={handleInputChange}
+                className="form-control"
+                placeholder="Email do consumidor"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Telemóvel do Consumidor:</label>
+              <input
+                type="tel"
+                name="consumerPhone"
+                value={newEvent.consumerPhone}
+                onChange={handleInputChange}
+                className="form-control"
+                placeholder="Telemóvel do consumidor"
+                required
               />
             </div>
             <button type="submit" className="btn btn-success">

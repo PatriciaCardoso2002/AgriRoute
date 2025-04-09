@@ -12,6 +12,8 @@ npm install --save @nestjs/swagger
 npm install --save @nestjs/passport passport passport-headerapikey passport-local
 npm install --save-dev @types/passport-local
 
+npm install kafkajs
+
 # 4. Criar módulo de autenticação
 nest generate module auth
 nest generate service auth

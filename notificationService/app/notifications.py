@@ -119,8 +119,7 @@ async def create_notification_sms(
     )
 
     try:
-        send_sms(notification.recipient, notification.body)
-
+        await send_sms(notification.recipient, notification.body)
         db.add(new_notification)
         db.commit()
         db.refresh(new_notification)

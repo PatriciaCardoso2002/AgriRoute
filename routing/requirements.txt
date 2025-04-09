@@ -3,3 +3,4 @@ openrouteservice
 fastapi[all] 
 geopy
 pydantic
+kafka-python
