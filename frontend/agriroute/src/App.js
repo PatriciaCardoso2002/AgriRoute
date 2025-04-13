@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 // Import components
-import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile } from './components';
+import { Home, BookingConsumer, BookingTransporter, BookingProducer, Login, Logo, LoginButton, LogoutButton, Profile, CheckoutPayment } from './components';
 import { useNavigate } from 'react-router-dom';
 import BookingService from './services/bookingService';
 import NotificationSocket from './components/NotificationSocket';
+
+const stripePromise = loadStripe("pk_test_51R6F1S07sK5I33LbUeEU1ZYKIpJqEGfA9Etp0pTSNfgXNS6dgVsq9HwWgf0krqIkARA9N3EQbJHtdo7Dhodybar500KvYm8NaA");
 
 
 function App() {
@@ -132,11 +136,6 @@ function App() {
             <Link to="/bookingTransporter" className="nav-link">Booking Transporter</Link>
           </li>
         )}
-        {isAuthenticated && userRole === "producer" && (
-          <li className="nav-item">
-            <Link to="/bookingProducer" className="nav-link">Booking Producer</Link>
-          </li>
-        )}
       </ul>
 
       {/* Show Login if Not Logged In, Logout if Logged In */}
@@ -173,6 +172,12 @@ function App() {
       <Route path="/bookingTransporter" element={<BookingTransporter />} />
       <Route path="/bookingProducer" element={<BookingProducer />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/checkout" element={
+          <Elements stripe={stripePromise}>
+              <CheckoutPayment />
+          </Elements>
+      }
+/>
     </Routes>
     {isAuthenticated && userId && <NotificationSocket userId={userId} />}
   </div>

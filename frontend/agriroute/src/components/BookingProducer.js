@@ -1,15 +1,17 @@
+// BookingProducer.js
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./../styles/booking.css";
+import { useNavigate } from "react-router-dom";
 import { createBooking, getBookingsByUser } from "../services/bookingService";
 
 function BookingProducer() {
   const [date, setDate] = useState(new Date());
   const [username, setUsername] = useState("");
-  const [events, setEvents] = useState({}); 
-  const { isAuthenticated, getIdTokenClaims, user } = useAuth0();
+  const [events, setEvents] = useState({});
+  const { isAuthenticated, getIdTokenClaims } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [newEvent, setNewEvent] = useState({
@@ -18,11 +20,8 @@ function BookingProducer() {
     time: "",
     notes: "",
     pickupAddress: "",
-    deliveryAddress: "",
-    consumerEmail: "",
-    consumerPhone: ""
+    deliveryAddress: ""
   });
-  
 
   const toLocalISODate = (date) => {
     const offset = date.getTimezoneOffset() * 60000;
@@ -30,6 +29,7 @@ function BookingProducer() {
     return localDate.toISOString().split("T")[0];
   };
 
+  const navigate = useNavigate();
   const formattedDate = toLocalISODate(date);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ function BookingProducer() {
       try {
         const apiKey = localStorage.getItem("apikey");
         const userId = localStorage.getItem("userId");
-        
+
         const bookings = await getBookingsByUser(apiKey, { date: formattedDate }, userId);
         const allBookings = await getBookingsByUser(apiKey, {}, userId);
 
@@ -87,7 +87,7 @@ function BookingProducer() {
 
         const mappedBookings = bookings.map((b) => {
           const parts = b.description ? b.description.split('|').map(part => part.trim()) : [];
-          
+
           const result = {
             product: "Produto não especificado",
             quantity: "",
@@ -98,7 +98,7 @@ function BookingProducer() {
             deliveryAddress: "",
             rawData: b
           };
-        
+
           parts.forEach(part => {
             if (part.startsWith("Produto:")) result.product = part.replace("Produto:", "").trim();
             if (part.startsWith("Quantidade:")) result.quantity = part.replace("Quantidade:", "").trim();
@@ -107,12 +107,12 @@ function BookingProducer() {
             if (part.startsWith("Recolha:")) result.pickupAddress = part.replace("Recolha:", "").trim();
             if (part.startsWith("Entrega:")) result.deliveryAddress = part.replace("Entrega:", "").trim();
           });
-        
+
           if (b.datetime) {
             const eventTime = new Date(b.datetime);
             result.time = eventTime.toLocaleTimeString('pt-PT', { hour: "2-digit", minute: "2-digit" });
           }
-        
+
           return result;
         });
 
@@ -146,10 +146,9 @@ function BookingProducer() {
 
     const [hours, minutes] = time.split(':');
     const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-    
-    // Criar data no formato correto
+
     const datetime = new Date(`${formattedDate}T${formattedTime}`);
-    datetime.setHours(datetime.getHours()); // Ajuste para timezone
+    datetime.setHours(datetime.getHours());
 
     if (isNaN(datetime.getTime())) {
       alert("Data/hora inválida");
@@ -164,23 +163,27 @@ function BookingProducer() {
 
     const apiKey = localStorage.getItem("apikey");
     const userId = claims.sub;
-    const email = user?.email || "";
-    const telemovel = localStorage.getItem("userPhone") || "";
-    
-    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | Email Produtor: ${user?.email || ''} | Telemóvel Produtor: ${telemovel} | Email Consumidor: ${newEvent.consumerEmail} | Telemóvel Consumidor: ${newEvent.consumerPhone} | User ID: ${userId}`;
+
+    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
 
     const bookingData = {
       datetime: datetime.toISOString(),
       duration: 3600,
       description,
-      ...(user?.email && { email: user.email }),
-      ...(user?.phone_number && { telemovel: user.phone_number }),
     };
 
     try {
-      await createBooking(bookingData, apiKey);
+      await createBooking(bookingData, apiKey, userId);
       alert("✅ Pedido criado com sucesso!");
 
+      // Store checkout information in localStorage
+      localStorage.setItem('checkoutProduct', product);
+      localStorage.setItem('checkoutQuantity', quantity);
+      // Assuming a fixed price per kg for simplicity, e.g., 2.50€
+      const pricePerKg = 2.50;
+      localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2));
+
+      navigate("/checkout");
       setEvents((prevEvents) => ({
         ...prevEvents,
         [formattedDate]: [
@@ -198,10 +201,10 @@ function BookingProducer() {
         ],
       }));
 
-      setNewEvent({ 
-        product: "", 
-        quantity: "", 
-        time: "", 
+      setNewEvent({
+        product: "",
+        quantity: "",
+        time: "",
         notes: "",
         pickupAddress: "",
         deliveryAddress: ""
@@ -351,32 +354,7 @@ function BookingProducer() {
                 rows="3"
               />
             </div>
-            <div className="form-group">
-              <label>Email do Consumidor:</label>
-              <input
-                type="email"
-                name="consumerEmail"
-                value={newEvent.consumerEmail}
-                onChange={handleInputChange}
-                className="form-control"
-                placeholder="Email do consumidor"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Telemóvel do Consumidor:</label>
-              <input
-                type="tel"
-                name="consumerPhone"
-                value={newEvent.consumerPhone}
-                onChange={handleInputChange}
-                className="form-control"
-                placeholder="Telemóvel do consumidor"
-                required
-              />
-            </div>
-            <button type="submit" className="btn btn-success">
+            <button type="submit" className="btn btn-success" onClick={handleAddEvent}>
               Adicionar
             </button>
           </form>

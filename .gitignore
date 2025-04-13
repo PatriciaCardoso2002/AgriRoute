@@ -65,3 +65,6 @@ Dockerfile
 **/tests/results/
 .coverage
 htmlcov/
+
+
+.env
