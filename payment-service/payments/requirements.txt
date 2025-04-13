@@ -4,3 +4,4 @@ python-dotenv
 drf-yasg
 requests
 stripe
+django-cors-headers

@@ -59,9 +59,14 @@ const getClientByName = async (name) => {
 
 
 //              BOOKINGS: 
-  export const createBooking = async (data, apiKey) => {
-    
-    return axios.post(`${BASE_URL}/bookings`, data, {
+  export const createBooking = async (data, apiKey, userId) => {
+    // Adicionar o userId à descrição
+    const bookingData = {
+      ...data,
+      description: `${data.description} | User ID: ${userId}`, // Adiciona o ID do usuário à descrição
+    };
+  
+    return axios.post(`${BASE_URL}/bookings`, bookingData, {
       ...withApiKey(apiKey),
     });
   };

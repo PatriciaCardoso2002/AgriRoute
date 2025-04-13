@@ -7,7 +7,6 @@ import { Booking } from './entities/booking.entity';
 import { ClientsService } from 'src/clients/clients.service';
 import { ReadBooking, freeSlot } from './bookings.interface';
 import { isISODateString, isOverlapping } from '../../utils/bookings-operations';
-import { enviarEvento } from '../kafka/kafka.service';
 
 @Injectable()
 export class BookingsService {
@@ -206,14 +205,6 @@ export class BookingsService {
           });
   
           await this.bookingRepository.save(booking);
-
-          await enviarEvento('novos_pedidos', {
-            transportador: {
-              email: client.email,
-              sms: client.telemovel,
-              push: client.id
-            }
-          });
           
           return {
             statusCode: HttpStatus.CREATED,
@@ -573,41 +564,7 @@ export class BookingsService {
         duration,
         description,
       });
-
-      const updatedBooking = await this.bookingRepository.findOne({
-        where: { id: bookingId },
-        relations: ['client'],
-      });
-
-      if (!updatedBooking) {
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: 'Booking not found after update.',
-        };
-      }
-      
-      const status = this.extrairStatus(description ?? ''); // extrai o status da descrição
-      const agora = new Date();
-      const criado = new Date(updatedBooking.datetime);
-      const passouDuasHoras = agora.getTime() - criado.getTime() > 2 * 60 * 60 * 1000;
   
-      console.log("RUNNING");
-      const statusImportante = ['confirmado', 'cancelado', 'concluído', 'transporte'].includes(status);
-      const muitoPendente = status === 'pendente' && passouDuasHoras;
-  
-      if (statusImportante || muitoPendente) {
-        const { email, sms } = this.extrairContacto(description ?? '');
-
-        await enviarEvento('estado_pedido', {
-          produtor: {
-            ...(email && { email }),
-            ...(sms && { sms }),
-          },
-          estado: status,
-        });
-
-      }
-
       return {
         statusCode: HttpStatus.OK,
         message: 'Booking updated successfully!',
@@ -647,22 +604,4 @@ export class BookingsService {
       };
     }
   }
-  
-  private extrairStatus(description: string): string {
-    const match = description.match(/Status:\s*(\w+)/i);
-    return match ? match[1].toLowerCase() : 'pendente';
-  }
-
-  private extrairContacto(description: string) {
-    const emailMatch = description.match(/Email Produtor:\s*([^\|]+)/i);
-    const smsMatch = description.match(/Telemóvel Produtor:\s*([^\|]+)/i);
-  
-    return {
-      email: emailMatch ? emailMatch[1].trim() : null,
-      sms: smsMatch ? smsMatch[1].trim() : null,
-    };
-  }
-  
-  
-  
 }
