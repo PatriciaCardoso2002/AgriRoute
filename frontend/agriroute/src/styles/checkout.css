@@ -1,0 +1,91 @@
+.checkout-container {
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    font-family: 'Arial', sans-serif;
+  }
+  
+  .checkout-container h2 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .checkout-content {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+  }
+  
+  .checkout-form {
+    flex: 1;
+    min-width: 45%;
+  }
+  
+  .checkout-summary {
+    flex: 1;
+    min-width: 30%;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  .checkout-form .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .checkout-form .form-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #555;
+  }
+  
+  .card-element {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 12px;
+    font-size: 16px;
+    width: 100%;
+  }
+  
+  .checkout-summary h4 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 15px;
+  }
+  
+  .checkout-summary p {
+    font-size: 18px;
+    font-weight: bold;
+    color: #444;
+  }
+  
+  .submit-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .submit-button:hover {
+    background-color: #45a049;
+  }
+  
+  .submit-button:disabled {
+    background-color: #ccc;
+  }
+  
+  .alert {
+    margin-top: 15px;
+  }
+  
