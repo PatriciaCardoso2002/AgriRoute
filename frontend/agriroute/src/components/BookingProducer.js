@@ -1,11 +1,10 @@
-// BookingProducer.js
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./../styles/booking.css";
 import { useNavigate } from "react-router-dom";
-import { createBooking, getBookingsByUser } from "../services/bookingService";
+import { getBookingsByUser } from "../services/bookingService";
 
 function BookingProducer() {
   const [date, setDate] = useState(new Date());
@@ -144,79 +143,25 @@ function BookingProducer() {
       return;
     }
 
-    const [hours, minutes] = time.split(':');
-    const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+    // Armazenar os dados do booking para usar após o pagamento
+    localStorage.setItem('pendingBooking', JSON.stringify({
+      product,
+      quantity,
+      time,
+      notes: notes || 'Sem observações',
+      pickupAddress,
+      deliveryAddress,
+      formattedDate
+    }));
 
-    const datetime = new Date(`${formattedDate}T${formattedTime}`);
-    datetime.setHours(datetime.getHours());
+    // Armazenar também os dados para o checkout
+    localStorage.setItem('checkoutProduct', product);
+    localStorage.setItem('checkoutQuantity', quantity);
+    const pricePerKg = 2.50;
+    localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2));
 
-    if (isNaN(datetime.getTime())) {
-      alert("Data/hora inválida");
-      return;
-    }
-
-    let claims;
-    while (!claims) {
-      claims = await getIdTokenClaims();
-      if (!claims) await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    const apiKey = localStorage.getItem("apikey");
-    const userId = claims.sub;
-
-    const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
-
-    const bookingData = {
-      datetime: datetime.toISOString(),
-      duration: 3600,
-      description,
-    };
-
-    try {
-      await createBooking(bookingData, apiKey, userId);
-      alert("✅ Pedido criado com sucesso!");
-
-      // Store checkout information in localStorage
-      localStorage.setItem('checkoutProduct', product);
-      localStorage.setItem('checkoutQuantity', quantity);
-      // Assuming a fixed price per kg for simplicity, e.g., 2.50€
-      const pricePerKg = 2.50;
-      localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2));
-
-      navigate("/checkout");
-      setEvents((prevEvents) => ({
-        ...prevEvents,
-        [formattedDate]: [
-          ...(prevEvents[formattedDate] || []),
-          {
-            product,
-            quantity,
-            time: formattedTime.slice(0, 5),
-            notes: notes || "Sem observações",
-            pickupAddress,
-            deliveryAddress,
-            status: "Pendente",
-            description
-          },
-        ],
-      }));
-
-      setNewEvent({
-        product: "",
-        quantity: "",
-        time: "",
-        notes: "",
-        pickupAddress: "",
-        deliveryAddress: ""
-      });
-    } catch (error) {
-      console.error("❌ Erro ao criar booking:", error);
-      let errorMsg = "Erro ao criar pedido";
-      if (error.response) {
-        errorMsg += `: ${error.response.data.message || error.response.statusText}`;
-      }
-      alert(errorMsg);
-    }
+    // Navegar para a página de pagamento
+    navigate("/checkout");
   };
 
   return (
@@ -354,8 +299,8 @@ function BookingProducer() {
                 rows="3"
               />
             </div>
-            <button type="submit" className="btn btn-success" onClick={handleAddEvent}>
-              Adicionar
+            <button type="submit" className="btn btn-success">
+              Avançar para o pagamento 
             </button>
           </form>
         </div>

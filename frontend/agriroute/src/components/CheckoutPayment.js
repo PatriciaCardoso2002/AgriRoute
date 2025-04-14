@@ -4,6 +4,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { Button, Form, Alert, Spinner } from 'react-bootstrap';
 import "./../styles/checkout.css";
 import { useNavigate } from 'react-router-dom';
+import { createBooking } from '../services/bookingService';
 
 const CheckoutPayment = () => {
   const stripe = useStripe();
@@ -44,6 +45,34 @@ const CheckoutPayment = () => {
     setCheckoutPrice(localStorage.getItem('checkoutPrice') || '');
   }, [getIdTokenClaims]);
 
+  const createBookingAfterPayment = async () => {
+    try {
+      const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || {});
+      const { product, quantity, time, notes, pickupAddress, deliveryAddress, formattedDate } = pendingBooking;
+      
+      const [hours, minutes] = time.split(':');
+      const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+      const datetime = new Date(`${formattedDate}T${formattedTime}`);
+      datetime.setHours(datetime.getHours());
+
+      const apiKey = localStorage.getItem("apikey");
+      const userId = localStorage.getItem("userId");
+
+      const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
+
+      const bookingData = {
+        datetime: datetime.toISOString(),
+        duration: 3600,
+        description,
+      };
+
+      await createBooking(bookingData, apiKey, userId);
+      console.log("✅ Booking criado com sucesso após pagamento");
+    } catch (error) {
+      console.error("❌ Erro ao criar booking após pagamento:", error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Iniciando pagamento...");
@@ -52,6 +81,7 @@ const CheckoutPayment = () => {
 
     const product = localStorage.getItem('checkoutProduct') || '';
     const quantity = localStorage.getItem('checkoutQuantity') || ''; 
+    const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || {});
 
     const formattedString = `${quantity} Kg de ${product}`;
 
@@ -61,7 +91,11 @@ const CheckoutPayment = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ user_id: userId, amount: parseFloat(checkoutPrice) * 100 || 0 , description : formattedString}),
+        body: JSON.stringify({ 
+          user_id: userId, 
+          amount: parseFloat(checkoutPrice) * 100 || 0,
+          description: formattedString 
+        }),
       });
 
       const { clientSecret } = await res.json();
@@ -76,10 +110,20 @@ const CheckoutPayment = () => {
         setMessage(`❌ Erro no pagamento: ${result.error.message}`);
       } else if (result.paymentIntent.status === "succeeded") {
         setMessage("✅ Pagamento feito com sucesso!");
+        
+        // Criar o booking após o pagamento ser bem-sucedido
+        await createBookingAfterPayment();
+        
+        // Limpar os dados temporários
         localStorage.removeItem('checkoutProduct');
         localStorage.removeItem('checkoutQuantity');
         localStorage.removeItem('checkoutPrice');
-        //navigate('/payment-success');
+        localStorage.removeItem('pendingBooking');
+        
+        // Redirecionar de volta para a página de bookings após 2 segundos
+        setTimeout(() => {
+          navigate('/bookingProducer');
+        }, 2000);
       }
 
     } catch (err) {
