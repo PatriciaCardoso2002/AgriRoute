@@ -2,45 +2,39 @@ import json
 import stripe
 from django.conf import settings
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework.decorators import api_view
 
 stripe.api_key = settings.STRIPE_TEST_SECRET_KEY
 
-@csrf_exempt
-@api_view(['POST'])
 @swagger_auto_schema(
-    operation_description="Create Payment Intent",
+    method='post',
+    operation_description="Criação de um PaymentIntent",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description="User ID"),
-            'amount': openapi.Schema(type=openapi.TYPE_INTEGER, description="Payment Amount (€)"),
-            'description': openapi.Schema(type=openapi.TYPE_STRING, description="Payment Description")
-        },
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID do usuário"),
+            'amount': openapi.Schema(type=openapi.TYPE_INTEGER, description="Valor do pagamento em cêntimos"),
+            'description': openapi.Schema(type=openapi.TYPE_STRING, description="Descrição do pagamento")
+        }
     ),
     responses={
         200: openapi.Response(
-            description="Returns Client Secret and PaymentIntent ID",
+            description="Sucesso: retorna client_secret e payment_intent ID",
             examples={
-                'application/json': {
-                    'clientSecret': 'secret_key',
-                    'payment_intent': 'payment_intent_id'
+                "application/json": {
+                    "clientSecret": "pi_123_secret_abc",
+                    "payment_intent": "pi_123"
                 }
             }
         ),
-        500: openapi.Response(
-            description="Erro interno do servidor",
-            examples={
-                'application/json': {'error': 'Erro na criação do pagamento'}
-            }
-        ),
+        500: openapi.Response(description="Erro interno do servidor")
     }
 )
-
-
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def create_payment(request):
     try:
         data = json.loads(request.body)
