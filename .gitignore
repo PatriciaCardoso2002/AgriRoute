@@ -64,6 +64,3 @@ docker-compose.yml
 **/tests/results/
 .coverage
 htmlcov/
-
-
-.env
