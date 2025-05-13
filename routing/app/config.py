@@ -1,6 +1,6 @@
 import openrouteservice
 from fastapi import FastAPI, HTTPException
-from settings import API_KEY, BASE_URL
+from app.settings import API_KEY, BASE_URL
 import requests
 
 client = openrouteservice.Client(key=API_KEY)

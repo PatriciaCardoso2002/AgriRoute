@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from models import RouteRequest
+from app.models import RouteRequest
 from geopy.distance import geodesic
-from config import get_coordinates
+from app.config import get_coordinates
 from fastapi import Query
-from settings import API_KEY, BASE_URL, TOLERANCIA_METROS
+from app.settings import API_KEY, BASE_URL, TOLERANCIA_METROS
 import requests
 from datetime import datetime, timedelta
 from kafka import KafkaProducer
@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("routing")
 
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers='kafka:9092',
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
@@ -85,17 +85,17 @@ def verificar_chegada(
     else:
         return {"status": "Ainda não chegou.", "distancia_metros": distancia}
 
-@routes.get("/prev_Arrival")
-def previsao_chegada(
-    origem: str = Query(..., description="Endereço de origem"),
-    destino: str = Query(..., description="Endereço de destino"),
-    email_produtor: str = Query(...),
-    telemovel_produtor: str = Query(...),
-    email_consumidor: str = Query(...),
-    telemovel_consumidor: str = Query(...)
+@routes.get("/v1/routing/prev_Arrival")
+def prev_arrival(
+    origem: str,
+    destino: str,
+    datetime: str = Query(...),
+    email_produtor: str = "",
+    telemovel_produtor: str = "",
+    email_consumidor: str = "",
+    telemovel_consumidor: str = ""
 ):
-    """Prevê tempo de chegada com base nos endereços (origem e destino)"""
-
+    """Prevê tempo de chegada com base na data agendada e endereços"""
     try:
         origem_coords = get_coordinates(origem)
         destino_coords = get_coordinates(destino)
@@ -116,9 +116,9 @@ def previsao_chegada(
         duration_sec = int(summary['duration'])
         distance_m = summary['distance']
 
-        # Hora atual e estimada
-        agora = datetime.now()
-        hora_chegada = agora + timedelta(seconds=duration_sec)
+        # Usa a data/hora da marcação como base, não o datetime.now()
+        agendamento = datetime.fromisoformat(datetime)
+        hora_chegada = agendamento + timedelta(seconds=duration_sec)
 
         horas = duration_sec // 3600
         minutos = (duration_sec % 3600) // 60
@@ -131,8 +131,9 @@ def previsao_chegada(
         print(f"📱 Telemóvel produtor: {telemovel_produtor}")
         print(f"📩 Email consumidor: {email_consumidor}")
         print(f"📱 Telemóvel consumidor: {telemovel_consumidor}")
+        print(f"📅 Agendamento: {agendamento}")
         print(f"🕒 Hora estimada: {hora_chegada.strftime('%H:%M')} | Tempo estimado: {tempo_formatado}")
-        
+
         producer.send("notificacoes", {
             "tipo": "prev_chegada",
             "hora_estimada": hora_chegada.strftime("%H:%M"),
@@ -150,7 +151,7 @@ def previsao_chegada(
         print("✅ Evento enviado com sucesso")
 
         return {
-            "distancia_km": round(distance_m, 2)/1000,
+            "distancia_km": round(distance_m, 2) / 1000,
             "tempo_estimado_formatado": tempo_formatado,
             "hora_estimada_chegada": hora_chegada.strftime("%H:%M")
         }
@@ -158,4 +159,3 @@ def previsao_chegada(
     except Exception as e:
         print("❌ Erro ao prever chegada:", e)
         raise HTTPException(status_code=500, detail=str(e))
-

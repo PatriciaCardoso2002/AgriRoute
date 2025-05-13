@@ -4,3 +4,5 @@ fastapi[all]
 geopy
 pydantic
 kafka-python
+sqlalchemy
+uvicorn

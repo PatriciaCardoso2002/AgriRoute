@@ -20,7 +20,9 @@ app = FastAPI(
     description="Service for sending email, SMS, and push notifications for multiple clients.",
     version="1.0.0",
     docs_url="/api/docs",
-    on_startup=[startup]  # Garante que `init_db()` rode no início
+    on_startup=[startup],  # Garante que `init_db()` rode no início
+    openapi_url="/api/openapi.json",
+    root_path="/agriRoute"
 )
 
 api_r = APIRouter(prefix="/v1/notifications/api_keys", tags=["API Keys"])

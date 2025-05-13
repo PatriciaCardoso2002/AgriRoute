@@ -45,33 +45,56 @@ const CheckoutPayment = () => {
     setCheckoutPrice(localStorage.getItem('checkoutPrice') || '');
   }, [getIdTokenClaims]);
 
-  const createBookingAfterPayment = async () => {
-    try {
-      const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || {});
-      const { product, quantity, time, notes, pickupAddress, deliveryAddress, formattedDate } = pendingBooking;
-      
-      const [hours, minutes] = time.split(':');
-      const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-      const datetime = new Date(`${formattedDate}T${formattedTime}`);
-      datetime.setHours(datetime.getHours());
+    const createBookingAfterPayment = async () => {
+      try {
+        const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || '{}');
+        const { product, quantity, time, notes, pickupAddress, deliveryAddress, formattedDate } = pendingBooking;
+        
+        if (!product || !quantity || !pickupAddress || !deliveryAddress) {
+          console.error("❌ Dados de booking incompletos:", pendingBooking);
+          return;
+        }
 
-      const apiKey = localStorage.getItem("apikey");
-      const userId = localStorage.getItem("userId");
+        const apiKey = localStorage.getItem("apikey");
+        const userId = localStorage.getItem("userId");
 
-      const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
+        console.log("🔑 apiKey:", apiKey);
+        console.log("🧑 userId:", userId);
 
-      const bookingData = {
-        datetime: datetime.toISOString(),
-        duration: 3600,
-        description,
-      };
-
-      await createBooking(bookingData, apiKey, userId);
-      console.log("✅ Booking criado com sucesso após pagamento");
-    } catch (error) {
-      console.error("❌ Erro ao criar booking após pagamento:", error);
-    }
-  };
+    
+        const [hours, minutes] = time.split(':');
+        const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+        const datetime = new Date(`${formattedDate}T${formattedTime}`);
+        datetime.setHours(datetime.getHours());
+    
+        const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
+    
+        const bookingData = {
+          datetime: datetime.toISOString(),
+          duration: 3600,
+          description,
+        };
+    
+        console.log("📤 Dados para criar booking:", bookingData);
+        console.log("🔑 API Key:", apiKey);
+    
+        const response = await fetch('http://localhost:8002/agriRoute/v1/booking/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify(bookingData),
+        });
+    
+        const result = await response.json();
+        console.log("📥 Resposta do backend:", result);
+    
+      } catch (error) {
+        console.error("❌ Erro ao criar booking após pagamento:", error);
+      }
+    };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,7 +109,7 @@ const CheckoutPayment = () => {
     const formattedString = `${quantity} Kg de ${product}`;
 
     try {
-      const res = await fetch("http://localhost:8000/v1/payments/", {
+      const res = await fetch("http://localhost:8002/agriRoute/v1/payments/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

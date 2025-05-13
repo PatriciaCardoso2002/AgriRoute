@@ -7,7 +7,7 @@ const NotificationSocket = ({ userId }) => {
   useEffect(() => {
     if (!userId) return;
 
-    const socket = new WebSocket(`ws://localhost:8000/v1/notifications/ws/${userId}`);
+    const socket = new WebSocket(`ws://localhost:8002/v1/notifications/ws/${userId}`);
 
     socket.onopen = () => {
       console.log(`✅ WebSocket conectado como ${userId}`);

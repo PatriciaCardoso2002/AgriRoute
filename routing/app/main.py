@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import routes
+from app.routes import routes
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -7,6 +7,8 @@ app = FastAPI(
     description="Service for routing paths and get km and minutes taken, as well as letting kniow when finishing point is near.",
     version="1.0.0",
     docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    root_path="/agriRoute"
 )
 
 origins = [

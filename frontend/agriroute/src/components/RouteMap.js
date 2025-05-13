@@ -39,7 +39,7 @@ const RouteMap = ({ origem, destino }) => {
           routeLineRef.current = null;
         }
 
-        const response = await fetch('http://localhost:8000/v1/routing/get_route', {
+        const response = await fetch('http://routing:8000/v1/routing/get_route', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ origem, destino })

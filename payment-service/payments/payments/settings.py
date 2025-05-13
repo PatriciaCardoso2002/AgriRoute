@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-u4a(xq_q-#3(ua&r%nz+zji04o@zspigiv%$v%et-f+y4#6_rn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'payments', 'kong']
 
 
 # Application definition
@@ -126,3 +126,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Chaves da API Stripe
 STRIPE_TEST_SECRET_KEY = os.getenv('STRIPE_TEST_SECRET_KEY')  # Chave secreta
 STRIPE_TEST_PUBLIC_KEY = os.getenv('STRIPE_TEST_PUBLIC_KEY')  # Chave pública
+

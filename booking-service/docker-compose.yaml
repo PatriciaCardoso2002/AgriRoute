@@ -1,0 +1,38 @@
+services:
+  booking_db:
+    image: postgres:15
+    container_name: booking_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - booking_pgdata:/var/lib/postgresql/data
+    networks:
+      - all
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  booking_service:
+    build: .
+    container_name: booking_service
+    depends_on:
+      booking_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    networks:
+      - all
+
+volumes:
+  booking_pgdata:
+
+networks:
+  all:
+    driver: bridge

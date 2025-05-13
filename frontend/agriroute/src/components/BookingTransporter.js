@@ -272,7 +272,7 @@ function BookingTransporter() {
         
   
         try {
-            const response = await fetch(`http://localhost:8000/v1/routing/prev_Arrival?${queryParams}`);
+            const response = await fetch(`http://booking:8000/v1/routing/prev_Arrival?${queryParams}`);
             const arrivalData = await response.json();
           
             if (response.ok) {
