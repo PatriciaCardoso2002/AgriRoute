@@ -50,7 +50,6 @@ instance/
 
 # Docker & Deployment
 docker-compose.yml
-Dockerfile
 *.dockerignore
 *.dockerenv
 
