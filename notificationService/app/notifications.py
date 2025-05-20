@@ -8,7 +8,7 @@ from app.auth import autenticar_empresa
 from app.socket_service import active_connections
 import re
 
-notifications_router = APIRouter(prefix="/v1/notifications", tags=["Notifications"])
+notifications_router = APIRouter(prefix="/agriRoute/v1/notifications", tags=["Notifications"])
 
 @notifications_router.post(
     "/sms",

@@ -14,7 +14,7 @@ import logging
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-auth_router = APIRouter(prefix="/v1/notifications/auth", tags=["Authentication"])
+auth_router = APIRouter(prefix="/agriRoute/v1/notifications/auth", tags=["Authentication"])
 
 # ------------------- AUTENTICAÇÃO DA EMPRESA (API KEY) ------------------- #
 

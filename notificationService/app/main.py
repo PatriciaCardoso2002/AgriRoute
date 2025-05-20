@@ -25,7 +25,7 @@ app = FastAPI(
     root_path="/agriRoute"
 )
 
-api_r = APIRouter(prefix="/v1/notifications/api_keys", tags=["API Keys"])
+api_r = APIRouter(prefix="/agriRoute/v1/notifications/api_keys", tags=["API Keys"])
 
 @api_r.get("", response_model=PaginatedResponse, responses={404: {"model": ErrorResponse}})
 def list_api_keys(

@@ -52,7 +52,7 @@ criar_rota "fastapi-route" "fastapi-service" "/agriRoute/v1/notifications"
 
 # Routing
 criar_servico "routing" "http://routing:8003"
-criar_rota "routing-route" "routing" "/agriRoute/v1/routing"
+criar_rota "routing-route" "routing" "/v1/routing"
 
 # Booking
 criar_servico "booking-service" "http://booking_service:8005"
