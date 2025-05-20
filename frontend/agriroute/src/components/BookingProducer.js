@@ -10,7 +10,7 @@ function BookingProducer() {
   const [date, setDate] = useState(new Date());
   const [username, setUsername] = useState("");
   const [events, setEvents] = useState({});
-  const { isAuthenticated, getIdTokenClaims, user } = useAuth0();
+  const {isAuthenticated, getIdTokenClaims, user } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
   const [datesWithBookings, setDatesWithBookings] = useState([]);
   const [newEvent, setNewEvent] = useState({
@@ -49,9 +49,11 @@ function BookingProducer() {
         if (!claims) throw new Error("Sem token");
 
         const userId = claims.sub;
-        const apiKey = localStorage.getItem("apikey");
+        const apiKey =localStorage.getItem("apikey");
+        console.log(apiKey)
         if (!apiKey) throw new Error("API Key não encontrada");
 
+        localStorage.setItem("apikey", apiKey);
         localStorage.setItem("userId", userId);
         setAuthReady(true);
       } catch (err) {

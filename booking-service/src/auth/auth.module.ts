@@ -8,7 +8,7 @@ import { ClientsService } from 'src/clients/clients.service';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'apiKey' }),
+    PassportModule,
     TypeOrmModule.forFeature([Client]),
   ],
   providers: [AuthService, ApiKeyStrategy, ClientsService],

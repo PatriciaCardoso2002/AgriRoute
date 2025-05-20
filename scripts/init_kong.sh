@@ -56,7 +56,10 @@ criar_rota "routing-route" "routing" "/agriRoute/v1/routing"
 
 # Booking
 criar_servico "booking-service" "http://booking_service:8005"
-criar_rota "booking-route" "booking-service" "/agriRoute/v1/booking"
+criar_rota "booking-route" "booking-service" "/v1/bookings" false
+
+criar_servico "booking-clients-service" "http://booking_service:8005"
+criar_rota "booking-clients-route" "booking-clients-service" "/v1/clients" false
 
 # Payments
 criar_servico "payments-service" "http://payments:8000"

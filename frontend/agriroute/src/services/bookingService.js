@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8002/agriRoute/v1/';
+const BASE_URL = 'http://localhost:8002/v1';
 
 //              HEADER: 
 const withApiKey = (apiKey) => ({
@@ -11,6 +11,7 @@ const withApiKey = (apiKey) => ({
 
 export const createClient = async (data) => {
   const response = await axios.post(`${BASE_URL}/clients`, data);
+  console.log("📡 Cliente criado:", response.data);
   return response.data;
 };
 
@@ -45,7 +46,14 @@ export const deleteClient = async (id) => {
 const getClientByName = async (name) => {
     try {
       const response = await axios.get(`${BASE_URL}/clients`);
+      console.log("📡 Resposta bruta da API:", response); // ADICIONA ISTO
       const clients = response.data;
+
+
+      if (!Array.isArray(clients)) {
+        console.error('❌ Esperava-se um array, mas veio:', clients);
+        return null;
+      }
   
       // Procurar pelo nome 
       const matchingClient = clients.find(client => client.name === name);
@@ -56,7 +64,6 @@ const getClientByName = async (name) => {
       throw error;
     }
 };
-
 
 //              BOOKINGS: 
   export const createBooking = async (data, apiKey) => {
