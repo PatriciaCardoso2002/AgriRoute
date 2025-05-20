@@ -46,19 +46,21 @@ export const deleteClient = async (id) => {
 const getClientByName = async (name) => {
     try {
       const response = await axios.get(`${BASE_URL}/clients`);
-      console.log("📡 Resposta bruta da API:", response); // ADICIONA ISTO
       const clients = response.data;
-
-
+      // Verifique se a URL está correta
+      console.log('URL completa:', `${BASE_URL}/clients`);
       if (!Array.isArray(clients)) {
-        console.error('❌ Esperava-se um array, mas veio:', clients);
-        return null;
+        console.error('Resposta inesperada - não é array:', clients);
+        throw new Error('Formato de resposta inválido da API');
       }
-  
+
+      console.log("🔍 getClientByName - response:", response);
+      console.log("🔍 getClientByName - clients:", clients);
       // Procurar pelo nome 
-      const matchingClient = clients.find(client => client.name === name);
+      // const matchingClient = clients.find(client => client.name === name);
   
-      return matchingClient || null;
+      // return matchingClient || null;
+        return clients.find(client => client.name === name) || null;
     } catch (error) {
       console.error('Erro ao buscar cliente:', error);
       throw error;

@@ -38,31 +38,43 @@ function BookingProducer() {
   }, [formattedDate]);
 
   useEffect(() => {
-    const fetchAuth = async () => {
+    const fetchAuthData = async () => {
       try {
         let claims;
-        for (let i = 0; i < 5 && !claims; i++) {
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        while (!claims && attempts < maxAttempts) {
+          attempts++;
           claims = await getIdTokenClaims();
-          if (!claims) await new Promise(res => setTimeout(res, 500));
+          if (!claims) await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        if (!claims) throw new Error("Sem token");
+        if (!claims) throw new Error("Não foi possível obter os claims do token");
+        
+        try {
+          localStorage.setItem('test', 'test');
+          localStorage.removeItem('test');
+          console.log('localStorage está disponível');
+        } catch (e) {
+          console.error('localStorage não disponível:', e);
+        }
 
-        const userId = claims.sub;
-        const apiKey =localStorage.getItem("apikey");
-        console.log(apiKey)
+        const apiKey = localStorage.getItem("apikey");
         if (!apiKey) throw new Error("API Key não encontrada");
 
-        localStorage.setItem("apikey", apiKey);
-        localStorage.setItem("userId", userId);
+        const userId = claims.sub;
+        localStorage.setItem('userId', userId);
+
         setAuthReady(true);
-      } catch (err) {
-        console.error("❌ Auth error:", err);
+      } catch (error) {
+        console.error("❌ Erro de autenticação:", error);
         setAuthReady(false);
       }
     };
 
-    if (isAuthenticated) fetchAuth();
+    if (isAuthenticated) fetchAuthData();
+    else setAuthReady(false);
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -75,11 +87,14 @@ function BookingProducer() {
         const bookings = await getBookingsByUser(apiKey, { date: formattedDate }, userId);
         const allBookings = await getBookingsByUser(apiKey, {}, userId);
 
-        const uniqueDates = [...new Set(allBookings.map(b => toLocalISODate(new Date(b.datetime))))];
+        const uniqueDates = [...new Set(
+          allBookings.map(b => toLocalISODate(new Date(b.datetime)))
+        )];
         setDatesWithBookings(uniqueDates);
 
-        const mapped = bookings.map((b) => {
-          const parts = (b.description || "").split("|").map(p => p.trim());
+        const mappedBookings = bookings.map((b) => {
+          const parts = b.description ? b.description.split("|").map(p => p.trim()): [];
+          
           const result = {
             product: "Produto não especificado",
             quantity: "",
@@ -110,29 +125,22 @@ function BookingProducer() {
 
         setEvents((prevEvents) => ({
           ...prevEvents,
-          [formattedDate]: mapped
+          [formattedDate]: mappedBookings
         }));        
         
-        setNewEvent({ 
-          product: "", 
-          quantity: "", 
-          time: "", 
-          notes: "",
-          pickupAddress: "",
-          deliveryAddress: ""
-        });
-        alert("✅ Pedido criado com sucesso!");
       } catch (err) {
         console.error("❌ Erro ao buscar bookings:", err);
       }
     };
 
     fetchBookings();
-  }, [authReady, formattedDate, date]);
+  }, [date, authReady, formattedDate]);
+
+  const selectedEvents = events[formattedDate] || [];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewEvent(prev => ({ ...prev, [name]: value }));
+    setNewEvent({ ...newEvent, [name]: value });
   };
 
   const handleAddEvent = async (e) => {
@@ -144,57 +152,28 @@ function BookingProducer() {
       return;
     }
 
-    const [hh, mm] = time.split(":");
-    const datetime = new Date(`${formattedDate}T${hh}:${mm}:00`);
-
-    const userId = localStorage.getItem("userId");
-    const email = user?.email || "";
-    const telemovel = localStorage.getItem("userPhone") || "";
-
-    localStorage.setItem("pendingBooking", JSON.stringify({
-      product, quantity, time, notes, pickupAddress, deliveryAddress,
-      formattedDate, consumerEmail, consumerPhone
+    // Armazenar os dados do booking para usar após o pagamento
+    localStorage.setItem('pendingBooking', JSON.stringify({
+      product,
+      quantity,
+      time,
+      notes: notes || 'Sem observações',
+      pickupAddress,
+      deliveryAddress,
+      formattedDate,
+      consumerEmail, 
+      consumerPhone
     }));
 
-    localStorage.setItem("checkoutProduct", product);
-    localStorage.setItem("checkoutQuantity", quantity);
-    localStorage.setItem("checkoutPrice", (parseFloat(quantity) * 2.5).toFixed(2));
+    // Armazenar também os dados para o checkout
+    localStorage.setItem('checkoutProduct', product);
+    localStorage.setItem('checkoutQuantity', quantity);
+    const pricePerKg = 2.50;
+    localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2));
+
 
     navigate("/checkout");
   };
-
-  // Verifica se há booking pendente e cria
-  useEffect(() => {
-    const pending = localStorage.getItem("bookingConfirmed");
-    if (pending === "true") {
-      const data = JSON.parse(localStorage.getItem("pendingBooking"));
-      const apiKey = localStorage.getItem("apikey");
-      const userId = localStorage.getItem("userId");
-      const email = user?.email || "";
-      const telemovel = localStorage.getItem("userPhone") || "";
-
-      const [hh, mm] = data.time.split(":");
-      const datetime = new Date(`${data.formattedDate}T${hh}:${mm}:00`).toISOString();
-
-      const description = `Produto: ${data.product} | Quantidade: ${data.quantity}kg | Status: Pendente | Notas: ${data.notes || 'Sem observações'} | Recolha: ${data.pickupAddress} | Entrega: ${data.deliveryAddress} | Email Produtor: ${email} | Telemóvel Produtor: ${telemovel} | Email Consumidor: ${data.consumerEmail} | Telemóvel Consumidor: ${data.consumerPhone} | User ID: ${userId}`;
-
-      const booking = {
-        datetime,
-        duration: 3600,
-        description
-      };
-
-      createBooking(booking, apiKey).then(() => {
-        console.log("✅ Booking criado após pagamento");
-        localStorage.removeItem("pendingBooking");
-        localStorage.removeItem("bookingConfirmed");
-      }).catch(err => {
-        console.error("❌ Erro ao criar booking após pagamento", err);
-      });
-    }
-  }, []);
-
-  const selectedEvents = events[formattedDate] || [];
 
   return (
     <>
@@ -208,7 +187,7 @@ function BookingProducer() {
       <div className="booking-container">
         <div className="welcome-section">
           <h2 className="text-success">Bem-vindo(a), {username}!</h2>
-          <p className="lead">Aqui você pode consultar e adicionar novos pedidos de recolha.</p>
+          <p className="lead">Aqui você pode consultar e adicionar novos pedidos de recolha dos seus produtos agrícolas.</p>
         </div>
 
         <div className="calendar-container">
@@ -227,14 +206,16 @@ function BookingProducer() {
           <p>Não existem eventos para esta data.</p>
         ) : (
           <div className="agenda-container">
-            {selectedEvents.map((event, idx) => (
-              <div key={idx} className="agenda-item">
+            {selectedEvents.map((event, index) => (
+              <div key={index} className="agenda-item">
                 <h5>{event.product} - {event.quantity}</h5>
                 <p>{event.time}h</p>
-                <p><strong>Recolha:</strong> {event.pickupAddress}</p>
-                <p><strong>Entrega:</strong> {event.deliveryAddress}</p>
+                <p><strong>Recolha:</strong> {event.pickupAddress || "Não especificado"}</p>
+                <p><strong>Entrega:</strong> {event.deliveryAddress || "Não especificado"}</p>
                 {event.notes && <p><strong>Observações:</strong> {event.notes}</p>}
-                <p className={`status-${event.status.toLowerCase()}`}>Status: {event.status}</p>
+                <p className={`status-${event.status.toLowerCase()}`}>
+                  Status: {event.status}
+                </p>
               </div>
             ))}
           </div>
