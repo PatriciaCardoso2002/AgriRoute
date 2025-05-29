@@ -47,7 +47,7 @@ def aplicar_politicas(nome_evento: str, evento: dict):
             if not contacto:
                 continue
 
-            body = f"O evento '{nome_evento}' foi acionado para o papel '{role}'."
+            body = f"O evento '{nome_evento}' foi acionado para '{role}'."
 
             if nome_evento == "estado_pedido" and evento.get("estado"):
                 body += f"\nEstado: {evento['estado']}"

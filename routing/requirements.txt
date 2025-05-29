@@ -6,3 +6,5 @@ pydantic
 kafka-python
 sqlalchemy
 uvicorn
+python-dateutil
+pytz

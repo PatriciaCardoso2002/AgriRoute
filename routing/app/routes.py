@@ -11,6 +11,8 @@ from kafka.errors import KafkaError
 import time
 import json
 import logging
+from dateutil import parser
+import pytz
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("routing")
@@ -130,13 +132,14 @@ def prev_arrival(
         duration_sec = int(summary['duration'])
         distance_m = summary['distance']
 
-        agendamento = datetime.fromisoformat(agendado_para)
+        agendamento_utc = parser.isoparse(agendado_para)
+        agendamento = agendamento_utc.astimezone(pytz.timezone("Europe/Lisbon"))
         hora_chegada = agendamento + timedelta(seconds=duration_sec)
 
         horas = duration_sec // 3600
         minutos = (duration_sec % 3600) // 60
         tempo_formatado = f"{horas}h {minutos}min" if horas > 0 else f"{minutos}min"
-
+        
         print("📤 A enviar notificação prev_chegada para Kafka...")
 
         mensagem = {
@@ -161,7 +164,7 @@ def prev_arrival(
         return {
             "distancia_km": round(distance_m / 1000, 2),
             "tempo_estimado_formatado": tempo_formatado,
-            "hora_estimada_chegada": hora_chegada.strftime("%H:%M")
+            "hora_estimada_chegada": hora_chegada.strftime("%d/%m/%Y às %H:%M")
         }
 
     except Exception as e:

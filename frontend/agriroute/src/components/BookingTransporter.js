@@ -277,7 +277,6 @@ function BookingTransporter() {
           telemovel_consumidor: descParts.consumidorTelemovel
         });
 
-        console.log("🧪 descParts completo:", descParts);
   
         try {
             const response = await fetch(`http://localhost:8002/v1/routing/prev_Arrival?${queryParams}`);
@@ -286,12 +285,6 @@ function BookingTransporter() {
             if (response.ok) {
               console.log("✅ Notificação enviada com sucesso:", arrivalData);
               alert(`🕒 Hora estimada de chegada: ${arrivalData.hora_estimada_chegada}`);
-              if (response.ok) {
-                alert(`🕒 Hora estimada de chegada: ${arrivalData.hora_estimada_chegada}`);
-              } else {
-                console.error("❌ Erro ao chamar prev_Arrival:", arrivalData);
-                alert("Erro ao obter previsão de chegada.");
-              }
             } else {
               console.error("❌ Erro ao chamar prev_Arrival:", arrivalData);
               alert("Erro ao obter previsão de chegada.");
