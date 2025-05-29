@@ -11,7 +11,7 @@ active_connections: Dict[str, WebSocket] = {}
 
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    """Gerencia conexões WebSocket associadas a um usuário específico"""
+    """Gere conexões WebSocket associadas a um usuário específico"""
     try:
         await websocket.accept()
         logging.info(f"✅ Usuário {user_id} conectado ao WebSocket.")

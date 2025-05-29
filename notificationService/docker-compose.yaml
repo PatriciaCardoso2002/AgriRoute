@@ -1,7 +1,7 @@
 services:
-  postgres:
+  postgres_notifications:
     image: postgres:latest
-    container_name: postgres
+    container_name: postgres_notifications
     restart: unless-stopped
     env_file:
       - .env
@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       start_period: 10s
       interval: 10s
       timeout: 5s
@@ -24,11 +24,11 @@ services:
 
   api:
     build: .  
-    container_name: fastapi_service
+    container_name: api
     ports:
-      - "8080:8080"
+      - "8009:8009"
     depends_on:
-      postgres: 
+      postgres_notifications: 
         condition: service_healthy
     networks:
       - all
@@ -48,32 +48,22 @@ services:
     networks:
       - all
 
-  kafka:
-    image: confluentinc/cp-kafka
-    ports:
-      - "9092:9092"
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - all
-
   notification-service:
     image: python:3.11
     working_dir: /app
     volumes:
       - ./app:/app
     command: >
-      sh -c "pip install kafka-python requests &&
-            pip install python-dotenv &&
-            python -u consumer.py"
+      sh -c "
+        for i in $(seq 1 15); do
+          curl -s kafka:29092 >/dev/null && break
+          echo 'Kafka ainda não está pronto...'
+          sleep 2
+        done &&
+        echo '✅ Kafka está acessível!' &&
+        pip install kafka-python requests python-dotenv &&
+        python -u consumer.py
+      "
     env_file:
       - .env
     depends_on:

@@ -7,16 +7,29 @@ from app.settings import API_KEY, BASE_URL, TOLERANCIA_METROS
 import requests
 from datetime import datetime, timedelta
 from kafka import KafkaProducer
+from kafka.errors import KafkaError
+import time
 import json
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("routing")
 
-producer = KafkaProducer(
-    bootstrap_servers='kafka:9092',
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+def criar_kafka_producer():
+    for tentativa in range(10):
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers='kafka:9092',
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            )
+            logger.info("✅ Kafka Producer conectado com sucesso")
+            return producer
+        except KafkaError as e:
+            logger.warning(f"⚠️ Kafka não disponível. Tentativa {tentativa+1}/10: {e}")
+            time.sleep(3)
+    raise RuntimeError("❌ Kafka não ficou disponível após várias tentativas")
+
+producer = criar_kafka_producer()
 
 logger.info("Kafka Producer inicializado com sucesso ✅")
 
@@ -85,22 +98,23 @@ def verificar_chegada(
     else:
         return {"status": "Ainda não chegou.", "distancia_metros": distancia}
 
-@routes.get("/v1/routing/prev_Arrival")
+from datetime import datetime, timedelta
+
+@routes.get("/prev_Arrival")
 def prev_arrival(
     origem: str,
     destino: str,
-    datetime: str = Query(...),
+    agendado_para: str = Query(...),  
     email_produtor: str = "",
     telemovel_produtor: str = "",
     email_consumidor: str = "",
     telemovel_consumidor: str = ""
 ):
-    """Prevê tempo de chegada com base na data agendada e endereços"""
     try:
         origem_coords = get_coordinates(origem)
         destino_coords = get_coordinates(destino)
 
-        route_url = f"https://api.openrouteservice.org/v2/directions/driving-car"
+        route_url = "https://api.openrouteservice.org/v2/directions/driving-car"
         params = {
             "api_key": API_KEY,
             "start": f"{origem_coords[1]},{origem_coords[0]}",
@@ -116,25 +130,16 @@ def prev_arrival(
         duration_sec = int(summary['duration'])
         distance_m = summary['distance']
 
-        # Usa a data/hora da marcação como base, não o datetime.now()
-        agendamento = datetime.fromisoformat(datetime)
+        agendamento = datetime.fromisoformat(agendado_para)
         hora_chegada = agendamento + timedelta(seconds=duration_sec)
 
         horas = duration_sec // 3600
         minutos = (duration_sec % 3600) // 60
-
         tempo_formatado = f"{horas}h {minutos}min" if horas > 0 else f"{minutos}min"
 
-        # DEBUG LOG
-        print("📤 Enviando evento para Kafka com os seguintes dados:")
-        print(f"📩 Email produtor: {email_produtor}")
-        print(f"📱 Telemóvel produtor: {telemovel_produtor}")
-        print(f"📩 Email consumidor: {email_consumidor}")
-        print(f"📱 Telemóvel consumidor: {telemovel_consumidor}")
-        print(f"📅 Agendamento: {agendamento}")
-        print(f"🕒 Hora estimada: {hora_chegada.strftime('%H:%M')} | Tempo estimado: {tempo_formatado}")
+        print("📤 A enviar notificação prev_chegada para Kafka...")
 
-        producer.send("notificacoes", {
+        mensagem = {
             "tipo": "prev_chegada",
             "hora_estimada": hora_chegada.strftime("%H:%M"),
             "tempo_estimado": tempo_formatado,
@@ -146,12 +151,15 @@ def prev_arrival(
                 "email": email_consumidor,
                 "sms": telemovel_consumidor
             }
-        })
+        }
 
-        print("✅ Evento enviado com sucesso")
+        producer.send("notificacoes", mensagem)
+        logger.info(f"[Kafka] Enviado para tópico 'notificacoes': {mensagem}")
+
+        print("✅ Notificação enviada com sucesso!")
 
         return {
-            "distancia_km": round(distance_m, 2) / 1000,
+            "distancia_km": round(distance_m / 1000, 2),
             "tempo_estimado_formatado": tempo_formatado,
             "hora_estimada_chegada": hora_chegada.strftime("%H:%M")
         }
@@ -159,3 +167,4 @@ def prev_arrival(
     except Exception as e:
         print("❌ Erro ao prever chegada:", e)
         raise HTTPException(status_code=500, detail=str(e))
+

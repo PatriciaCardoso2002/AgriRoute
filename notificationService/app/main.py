@@ -22,7 +22,6 @@ app = FastAPI(
     docs_url="/api/docs",
     on_startup=[startup],  # Garante que `init_db()` rode no início
     openapi_url="/api/openapi.json",
-    root_path="/agriRoute"
 )
 
 api_r = APIRouter(prefix="/agriRoute/v1/notifications/api_keys", tags=["API Keys"])

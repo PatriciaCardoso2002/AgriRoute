@@ -9,7 +9,7 @@ import { createBooking } from '../services/bookingService';
 const CheckoutPayment = () => {
   const stripe = useStripe();
   const elements = useElements();
-  const { getIdTokenClaims } = useAuth0();
+  const { getIdTokenClaims, user } = useAuth0();
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState(null);
@@ -48,8 +48,31 @@ const CheckoutPayment = () => {
   const createBookingAfterPayment = async () => {
     try {
       const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || {});
-      const { product, quantity, time, notes, pickupAddress, deliveryAddress, formattedDate } = pendingBooking;
+
+      console.log("🚚 Dados carregados do localStorage:", pendingBooking);
+
+      const {
+        product,
+        quantity,
+        time,
+        notes,
+        pickupAddress,
+        deliveryAddress,
+        formattedDate,
+        consumerEmail,
+        consumerPhone
+      } = pendingBooking;
+
+      const notificationData = {
+        email_produtor: user?.email || '',
+        telemovel_produtor: localStorage.getItem("userPhone") || user?.phone_number || '',
+        email_consumidor: consumerEmail || '',
+        telemovel_consumidor: consumerPhone || ''
+      };
       
+      localStorage.setItem('notificationData', JSON.stringify(notificationData));
+      console.log("📤 Dados salvos para notificação:", notificationData);
+            
       const [hours, minutes] = time.split(':');
       const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
       const datetime = new Date(`${formattedDate}T${formattedTime}`);
@@ -58,7 +81,14 @@ const CheckoutPayment = () => {
       const apiKey = localStorage.getItem("apikey");
       const userId = localStorage.getItem("userId");
 
-      const description = `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | User ID: ${userId}`;
+      const description = 
+      `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | ` +
+      `Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | ` +
+      `Email Consumidor: ${consumerEmail} | Telemóvel Consumidor: ${consumerPhone} | ` +
+      `Email Produtor: ${user?.email || ''} | Telemóvel Produtor: ${user?.phone_number || ''} | ` +
+      `User ID: ${userId}`;
+
+      console.log("🔎 Dados do utilizador Auth0:", user);
 
       const bookingData = {
         datetime: datetime.toISOString(),
@@ -83,6 +113,8 @@ const CheckoutPayment = () => {
     const product = localStorage.getItem('checkoutProduct') || '';
     const quantity = localStorage.getItem('checkoutQuantity') || ''; 
     const pendingBooking = JSON.parse(localStorage.getItem('pendingBooking') || {});
+
+    console.log("🚚 Dados do checkout:", { product, quantity, pendingBooking });
 
     const formattedString = `${quantity} Kg de ${product}`;
 
@@ -119,7 +151,6 @@ const CheckoutPayment = () => {
         localStorage.removeItem('checkoutProduct');
         localStorage.removeItem('checkoutQuantity');
         localStorage.removeItem('checkoutPrice');
-        localStorage.removeItem('pendingBooking');
         
         // Redirecionar de volta para a página de bookings após 2 segundos
         setTimeout(() => {

@@ -2,7 +2,7 @@ FROM kong:3.6.1
 
 USER root
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
 
 COPY ./scripts/init_kong.sh /init_kong.sh
 RUN chmod +x /init_kong.sh
@@ -18,3 +18,4 @@ CMD /bin/sh -c "\
   echo '✅ Kong disponível! Executando init_kong.sh...' && \
   /init_kong.sh && \
   tail -f /dev/null"
+

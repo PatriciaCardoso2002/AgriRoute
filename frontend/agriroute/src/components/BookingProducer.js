@@ -53,8 +53,6 @@ function BookingProducer() {
         if (!claims) throw new Error("Não foi possível obter os claims do token");
         
         try {
-          localStorage.setItem('test', 'test');
-          localStorage.removeItem('test');
           console.log('localStorage está disponível');
         } catch (e) {
           console.error('localStorage não disponível:', e);
@@ -113,6 +111,8 @@ function BookingProducer() {
             if (part.startsWith("Notas:")) result.notes = part.replace("Notas:", "").trim();
             if (part.startsWith("Recolha:")) result.pickupAddress = part.replace("Recolha:", "").trim();
             if (part.startsWith("Entrega:")) result.deliveryAddress = part.replace("Entrega:", "").trim();
+            if (part.startsWith("Email Consumidor:")) result.consumerEmail = part.replace("Email Consumidor:", "").trim();
+            if (part.startsWith("Telemóvel Consumidor:")) result.consumerPhone = part.replace("Telemóvel Consumidor:", "").trim();
           });
 
           if (b.datetime) {
@@ -152,6 +152,19 @@ function BookingProducer() {
       return;
     }
 
+    console.log("📦 Dados para salvar no localStorage:", {
+      product,
+      quantity,
+      time,
+      notes: notes || 'Sem observações',
+      pickupAddress,
+      deliveryAddress,
+      formattedDate,
+      consumerEmail,
+      consumerPhone
+    });
+    
+    
     // Armazenar os dados do booking para usar após o pagamento
     localStorage.setItem('pendingBooking', JSON.stringify({
       product,
@@ -169,8 +182,7 @@ function BookingProducer() {
     localStorage.setItem('checkoutProduct', product);
     localStorage.setItem('checkoutQuantity', quantity);
     const pricePerKg = 2.50;
-    localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2));
-
+    localStorage.setItem('checkoutPrice', (parseFloat(quantity) * pricePerKg).toFixed(2)); 
 
     navigate("/checkout");
   };

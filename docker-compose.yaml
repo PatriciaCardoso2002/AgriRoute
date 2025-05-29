@@ -4,13 +4,13 @@ services:
     container_name: kong_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_KONG_DB}
+      POSTGRES_USER: ${POSTGRES_KONG_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_KONG_PASSWORD}
     volumes:
       - kong_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_KONG_USER}", "-d", "${POSTGRES_KONG_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,6 +52,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  
+  postgres_notifications:
+    image: postgres:15
+    container_name: postgres_notifications
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5431:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - all
+      - notifications
 
   kong:
     build:
@@ -64,19 +88,19 @@ services:
         condition: service_healthy
     environment:
       KONG_DATABASE: postgres
-      KONG_PG_HOST: ${POSTGRES_HOST}
+      KONG_PG_HOST: ${POSTGRES_KONG_HOST}
       KONG_PG_PORT: ${POSTGRES_PORT}
-      KONG_PG_USER: ${POSTGRES_USER}
-      KONG_PG_PASSWORD: ${POSTGRES_PASSWORD}
-      KONG_PG_DATABASE: ${POSTGRES_DB}
+      KONG_PG_USER: ${POSTGRES_KONG_USER}
+      KONG_PG_PASSWORD: ${POSTGRES_KONG_PASSWORD}
+      KONG_PG_DATABASE: ${POSTGRES_KONG_DB}
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
     ports:
-      - "8002:8000"
-      - "8001:8001"
+      - "8002:8000"  # Proxy
+      - "8001:8001"  # Admin API
     networks:
       - all
 
@@ -100,17 +124,13 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
-      interval: 5s
-      retries: 10
-      timeout: 5s
     networks:
+      - all
       - notifications
 
   frontend:
@@ -125,9 +145,9 @@ services:
     extends:
       file: ./booking-service/docker-compose.yaml
       service: booking_service
-    depends_on:
-      kafka:
-        condition: service_healthy
+    depends_on:      
+      - kafka
+      - booking_db
     networks:
       - all
       - notifications
@@ -137,8 +157,7 @@ services:
       file: ./routing/docker-compose.yaml
       service: routing
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
     networks:
       - all
       - notifications
@@ -152,12 +171,23 @@ services:
         condition: service_healthy
     networks:
       - all
-      - notifications
 
   notification-service:
     extends:
       file: ./notificationService/docker-compose.yaml
+      service: notification-service
+    depends_on:
+      - kafka
+    networks:
+      - all
+      - notifications
+  
+  fastapi_service:
+    extends:
+      file: ./notificationService/docker-compose.yaml
       service: api
+    depends_on:
+      - kafka
     networks:
       - all
       - notifications
@@ -166,9 +196,12 @@ volumes:
   kong_postgres_data:
   booking_pgdata:
   payments_pgdata:
+  postgres_data: 
+  kafka_data:
 
 networks:
   all:
     driver: bridge
   notifications:
     driver: bridge
+  

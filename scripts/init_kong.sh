@@ -47,8 +47,11 @@ criar_rota() {
 # === Serviços e Rotas ===
 
 # Notifications
-criar_servico "fastapi-service" "http://fastapi_service:8080"
-criar_rota "fastapi-route" "fastapi-service" "/agriRoute/v1/notifications"
+criar_servico "fastapi-service" "http://fastapi_service:8009"
+criar_rota "fastapi-route" "fastapi-service" "/agriRoute/v1/notifications" false
+
+# WebSocket Notifications
+criar_rota "fastapi-ws" "fastapi-service" "/v1/notifications/ws"
 
 # Routing
 criar_servico "routing" "http://routing:8003"
@@ -68,9 +71,6 @@ criar_rota "payments-route" "payments-service" "/agriRoute/v1/payments"
 # Frontend (com strip_path=true para servir corretamente os assets)
 criar_servico "frontend-service" "http://frontend:3000"
 criar_rota "frontend-route" "frontend-service" "/agriRoute/v1/frontend" true
-
-# WebSocket Notifications
-criar_rota "fastapi-ws" "fastapi-service" "/v1/notifications/ws"
 
 # Rota raiz (necessária para Auth0 redirecionar corretamente para "/")
 criar_rota "frontend-root-route" "frontend-service" "/" false

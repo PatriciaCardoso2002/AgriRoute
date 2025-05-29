@@ -48,9 +48,9 @@ function BookingTransporter() {
 
     if (!desc) return result;
 
-    if (desc.includes("User ID:")) {
-      result.userId = desc.split("User ID:")[1].trim();
-      desc = desc.split("User ID:")[0].trim();
+    const match = desc.match(/User ID:\s*(.+)$/);
+    if (match) {
+      result.userId = match[1].trim();
     }
 
     const parts = desc.split("|").map(part => part.trim());
@@ -122,6 +122,7 @@ function BookingTransporter() {
         localStorage.setItem('userId', userId);
 
         setAuthReady(true);
+        localStorage.setItem("userPhone", localStorage.getItem("userPhone") || "");
 
       } catch (error) {
         console.error("❌ Erro de autenticação:", error);
@@ -220,7 +221,7 @@ function BookingTransporter() {
         pickupAddress: bookingToUpdate.pickupAddress || "",
         deliveryAddress: bookingToUpdate.deliveryAddress || "",
         produtorEmail: bookingToUpdate.produtorEmail || "",
-        produtorTelemovel: bookingToUpdate.produtorTelemovel || "",
+        produtorTelemovel: bookingToUpdate.produtorTelemovel || localStorage.getItem("userPhone") || "",
         consumidorEmail: bookingToUpdate.consumidorEmail || "",
         consumidorTelemovel: bookingToUpdate.consumidorTelemovel || "",
         userId: bookingToUpdate.rawDescription.includes("User ID:")
@@ -255,21 +256,28 @@ function BookingTransporter() {
           return;
         }
   
-        const queryParams = new URLSearchParams({
-          origem: descParts.pickupAddress,
-          destino: descParts.deliveryAddress,
+        const queryParams = new URLSearchParams({});
+
+        queryParams.append("origem", descParts.pickupAddress);
+        queryParams.append("destino", descParts.deliveryAddress);
+
+        if (descParts.produtorEmail) queryParams.append("email_produtor", descParts.produtorEmail);
+        if (descParts.produtorTelemovel) queryParams.append("telemovel_produtor", descParts.produtorTelemovel);
+        if (descParts.consumidorEmail) queryParams.append("email_consumidor", descParts.consumidorEmail);
+        if (descParts.consumidorTelemovel) queryParams.append("telemovel_consumidor", descParts.consumidorTelemovel);
+
+        if (bookingToUpdate?.datetime) {
+          queryParams.append("agendado_para", new Date(bookingToUpdate.datetime).toISOString());
+        }
+        
+        console.log("Dados para notificação:", {
           email_produtor: descParts.produtorEmail,
           telemovel_produtor: descParts.produtorTelemovel,
           email_consumidor: descParts.consumidorEmail,
           telemovel_consumidor: descParts.consumidorTelemovel
         });
-        console.log("🔍 Dados para notificação:", {
-          email_produtor: descParts.produtorEmail,
-          telemovel_produtor: descParts.produtorTelemovel,
-          email_consumidor: descParts.consumidorEmail,
-          telemovel_consumidor: descParts.telemovelConsumidor
-        });
-        
+
+        console.log("🧪 descParts completo:", descParts);
   
         try {
             const response = await fetch(`http://localhost:8002/v1/routing/prev_Arrival?${queryParams}`);

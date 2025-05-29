@@ -11,7 +11,7 @@ def carregar_politica(evento: str):
     return politicas.get(evento, {}).get("destinatarios", {})
 
 def enviar_via_endpoint(canal: str, payload: dict):
-    url = f"http://localhost:8002/agriRoute/v1/notifications/{canal}"
+    url = f"http://kong:8000/agriRoute/v1/notifications/{canal}"
     api_key = os.getenv("API_KEY")
     print("Api key>", api_key)
 
