@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-u4a(xq_q-#3(ua&r%nz+zji04o@zspigiv%$v%et-f+y4#6_rn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'payments', 'kong']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'payments', 'kong', 'grupo5-egs-deti.ua.pt', 'agriroute-payments']
 
 
 # Application definition
