@@ -15,7 +15,7 @@ stripe.api_key = settings.STRIPE_TEST_SECRET_KEY
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID do usuário"),
+            'user_id': openapi.Schema(type=openapi.TYPE_STRING, description="ID do user"),
             'amount': openapi.Schema(type=openapi.TYPE_INTEGER, description="Valor do pagamento em cêntimos"),
             'description': openapi.Schema(type=openapi.TYPE_STRING, description="Descrição do pagamento")
         }
