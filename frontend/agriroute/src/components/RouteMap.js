@@ -39,7 +39,7 @@ const RouteMap = ({ origem, destino }) => {
           routeLineRef.current = null;
         }
 
-        const response = await fetch('http://localhost:8002/v1/routing/get_route', {
+        const response = await fetch('https://grupo5-egs-deti.ua.pt/agriRoute/v1/routing/get_route', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ origem, destino })

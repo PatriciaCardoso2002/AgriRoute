@@ -1,0 +1,61 @@
+# kong-postgres.yaml
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kong-postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-postgres
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: kong-postgres
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong-postgres
+  template:
+    metadata:
+      labels:
+        app: kong-postgres
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kub12
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "kong"
+            - name: POSTGRES_USER
+              value: "admin"
+            - name: POSTGRES_PASSWORD
+              value: "admin123"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/kong-postgres-data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: kong-postgres-pvc

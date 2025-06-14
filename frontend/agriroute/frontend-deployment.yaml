@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agriroute-frontend
+  namespace: agriroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agriroute-frontend
+  template:
+    metadata:
+      labels:
+        app: agriroute-frontend
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kub13
+      containers:
+      - name: agriroute-frontend
+        image: registry.deti/agriroute/agriroute-frontend:latest
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agriroute-frontend
+  namespace: agriroute
+spec:
+  ports:
+    - port: 80
+      targetPort: 3000
+  selector:
+    app: agriroute-frontend

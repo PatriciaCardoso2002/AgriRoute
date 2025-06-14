@@ -2,7 +2,7 @@ import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
   clientId: 'booking-service',
-  brokers: ['kafka:9092'],
+  brokers: [process.env.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092'],
 });
 
 export const producer = kafka.producer({

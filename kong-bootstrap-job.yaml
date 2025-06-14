@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-bootstrap
+  namespace: agriroute
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kub12
+      containers:
+      - name: kong
+        image: kong:3.6.1
+        env:
+        - name: KONG_DATABASE
+          value: postgres
+        - name: KONG_PG_HOST
+          value: kong-postgres
+        - name: KONG_PG_PORT
+          value: "5432"
+        - name: KONG_PG_USER
+          value: admin
+        - name: KONG_PG_PASSWORD
+          value: admin123
+        - name: KONG_PG_DATABASE
+          value: kong
+        command: ["kong", "migrations", "bootstrap"]
+      restartPolicy: Never
+  backoffLimit: 2

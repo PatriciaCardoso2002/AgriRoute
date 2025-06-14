@@ -279,7 +279,7 @@ function BookingTransporter() {
 
   
         try {
-            const response = await fetch(`http://localhost:8002/v1/routing/prev_Arrival?${queryParams}`);
+            const response = await fetch(`https://grupo5-egs-deti.ua.pt/agriRoute/v1/routing/prev_Arrival?${queryParams}`);
             const arrivalData = await response.json();
           
             if (response.ok) {
