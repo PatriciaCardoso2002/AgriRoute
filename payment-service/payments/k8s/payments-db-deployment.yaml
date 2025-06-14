@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: registry.deti/agriroute/payments_db:latest
+          image: postgres:15 
           ports:
             - containerPort: 5432
           resources:
