@@ -1,0 +1,189 @@
+## Booking deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+  namespace: agriroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: booking
+  template:
+    metadata:
+      labels:
+        io.kompose.service: booking
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: booking-service--env
+          image: registry.deti/agriroute/bookings:latest
+          name: booking-service
+          resources:
+            requests:
+              memory: "500Mi"
+              cpu: "10m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8005
+              protocol: TCP
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command: ['sh', '-c', 'until nc -z booking-db 5432; do echo waiting for db; sleep 2; done;']
+      restartPolicy: Always
+
+## Booking-db deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-db
+  namespace: agriroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: booking-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: booking-db
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_DB
+              value: bookingservice
+            - name: POSTGRES_PASSWORD
+              value: database
+            - name: POSTGRES_USER
+              value: postgres
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          image: postgres:15
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - bookingservice
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: booking-db
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/booking-data
+              name: booking-pgdata
+      restartPolicy: Always
+      volumes:
+        - name: booking-pgdata
+          persistentVolumeClaim:
+            claimName: booking-pgdata
+
+## Service for Booking
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking
+  namespace: agriroute
+spec:
+  ports:
+    - name: "8005"
+      port: 8005
+      targetPort: 8005
+  selector:
+    io.kompose.service: booking
+
+## Service for Booking-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-db
+  namespace: agriroute
+spec:
+  ports:
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
+  selector:
+    io.kompose.service: booking-db
+
+
+## Booking ConfigMap 
+---
+apiVersion: v1
+data:
+  DB_HOST: booking-db
+  DB_NAME: bookingservice
+  DB_PASSWORD: database
+  DB_PORT: "5432"
+  DB_USERNAME: postgres
+  KAFKAJS_NO_PARTITIONER_WARNING: "1"
+  KAFKA_BOOTSTRAP_SERVERS: kafka.agriroute.svc.cluster.local:9092
+kind: ConfigMap
+metadata:
+  labels:
+    io.kompose.service: booking-booking-service--env
+  name: booking-service--env
+  namespace: agriroute
+
+## Booking Persistent Volume Claim
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: booking-pgdata
+  name: booking-pgdata
+  namespace: agriroute
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+
+
+
+
+# # Create Ingress Resource - defines the rules for routing traffic
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: agriroute-k3s
+#   annotations:
+#     kubernetes.io/ingress.class: traefik
+#     traefik.ingress.kubernetes.io/frontend-entry-points: http,https
+#     traefik.ingress.kubernetes.io/redirect-entry-point: https
+#     traefik.ingress.kubernetes.io/redirect-permanent: "true"
+# spec:
+#   rules:
+#   - host: grupo5-egs-deti.ua.pt
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: booking
+#             port: 
+#               number: 80
+
+
+

@@ -9,7 +9,7 @@ import { createBooking } from '../services/bookingService';
 const CheckoutPayment = () => {
   const stripe = useStripe();
   const elements = useElements();
-  const { getIdTokenClaims, user } = useAuth0();
+  const { getIdTokenClaims, user} = useAuth0();
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState(null);
@@ -81,12 +81,19 @@ const CheckoutPayment = () => {
       const apiKey = localStorage.getItem("apikey");
       const userId = localStorage.getItem("userId");
 
-      const description = 
-      `Produto: ${product} | Quantidade: ${quantity}kg | Status: Pendente | ` +
-      `Notas: ${notes || 'Sem observações'} | Recolha: ${pickupAddress} | Entrega: ${deliveryAddress} | ` +
-      `Email Consumidor: ${consumerEmail} | Telemóvel Consumidor: ${consumerPhone} | ` +
-      `Email Produtor: ${user?.email || ''} | Telemóvel Produtor: ${user?.phone_number || ''} | ` +
-      `User ID: ${userId}`;
+      const description = [
+        `Produto: ${product}`,
+        `Quantidade: ${quantity}kg`,
+        `Status: Pendente`,
+        `Notas: ${notes || 'Sem observações'}`,
+        `Recolha: ${pickupAddress}`,
+        `Entrega: ${deliveryAddress}`,
+        `Email Produtor: ${user?.email || ''}`,
+        `Telemóvel Produtor: ${user?.phone_number || ''}`,
+        `Email Consumidor: ${consumerEmail}`,
+        `Telemóvel Consumidor: ${consumerPhone}`,
+        `User ID: ${userId}`
+      ].join(' | ').replace(/\s+/g, ' ').trim();
 
       console.log("🔎 Dados do utilizador Auth0:", user);
 
@@ -119,7 +126,7 @@ const CheckoutPayment = () => {
     const formattedString = `${quantity} Kg de ${product}`;
 
     try {
-      const res = await fetch("http://localhost:8002/agriRoute/v1/payments/", {
+      const res = await fetch("https://grupo5-egs-deti.ua.pt/agriRoute/v1/payments/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -2,7 +2,7 @@
   "name": "agriroute",
   "version": "0.1.0",
   "private": true,
-  "homepage": "/agriRoute/v1/frontend",
+  "homepage": ".",
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
     "@stripe/react-stripe-js": "^3.6.0",

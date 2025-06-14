@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-init-job
+  namespace: agriroute
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kub12
+      restartPolicy: Never # O Job deve tentar executar apenas uma vez (ou conforme configurado em backoffLimit)
+      containers:
+      - name: kong-init
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "/config/init_kong.sh"]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        env:
+        - name: KONG_ADMIN
+          value: "http://kong-proxy.agriroute:8001" # Usar o nome do serviço para comunicação dentro do cluster
+      volumes:
+      - name: config-volume
+        configMap:
+          name: kong-init-script
+  backoffLimit: 3 # Tentar novamente no máximo 3 vezes em caso de falha

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8002/v1';
+const BASE_URL = 'https://grupo5-egs-deti.ua.pt/v1';
 
 //              HEADER: 
 const withApiKey = (apiKey) => ({
@@ -93,7 +93,14 @@ const getClientByName = async (name) => {
       });
       
       console.log("📡 Resposta completa da API:", response);
-      let bookings = response.data || [];
+      // let bookings = response.data || [];
+      const data = response.data;
+      if (!Array.isArray(data)) {
+        console.error("❌ A resposta não é uma lista de bookings:", data);
+        throw new Error("Resposta inesperada da API de bookings");
+      }
+
+      let bookings = data;
       console.log("📝 Todos os bookings antes do filtro:", bookings);
   
       if (userId) {
