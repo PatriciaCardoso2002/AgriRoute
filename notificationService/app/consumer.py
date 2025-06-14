@@ -5,13 +5,17 @@ import time
 from kafka.errors import KafkaError
 from policies import aplicar_politicas
 import requests
+import os
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KONG_HOST = os.getenv("KONG_HOST", "kong:8000")
 
 def garantir_cliente_sistema():
     nome = "AgrirouteNotificationService"
     email = "notifier@agriroute.internal"
     senha = "12345678"
 
-    base_url = "http://kong:8000/agriRoute/v1/notifications"
+    base_url = f"http://{KONG_HOST}/agriRoute/v1/notifications"
 
     for i in range (5):
         try:
@@ -50,13 +54,14 @@ def garantir_cliente_sistema():
 
 garantir_cliente_sistema()
 
+
 # Retry loop para garantir que o Kafka está pronto
 tentativas = 0
 while tentativas < 60:
     try:
         consumer = KafkaConsumer(
             'notificacoes',
-            bootstrap_servers='kafka:9092',
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
             group_id='notificacoes-group',
             value_deserializer=lambda v: json.loads(v.decode('utf-8'))
         )

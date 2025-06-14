@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: routing
+  namespace: agriroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: routing
+  template:
+    metadata:
+      labels:
+        app: routing
+    spec:
+      dnsPolicy: "ClusterFirstWithHostNet"
+      dnsConfig:
+        nameservers:
+          - 8.8.8.8
+          - 1.1.1.1
+      containers:
+        - name: routing
+          image: registry.deti/agriroute/routing:latest
+          command: ["uvicorn"]
+          args: ["app.main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
+          ports:
+            - containerPort: 8003
+          envFrom:
+            - secretRef:
+                name: routing-env
+      nodeSelector:
+        kubernetes.io/hostname: kub13
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: routing
+  namespace: agriroute
+spec:
+  selector:
+    app: routing
+  ports:
+    - port: 8006         
+      targetPort: 8003
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: routing-env
+  namespace: agriroute
+type: Opaque
+stringData:
+  API_KEY: "5b3ce3597851110001cf6248b09ad2cc6c8d4dd8b97c355faabf8c31"
+  BASE_URL: "https://api.openrouteservice.org"
+  TOLERANCIA_METROS: "50"
+  KAFKA_BOOTSTRAP_SERVERS: kafka.agriroute.svc.cluster.local:9092

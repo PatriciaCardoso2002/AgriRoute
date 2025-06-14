@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: agriroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: registry.deti/notification-service:latest
+          command: ["sh", "-c"]
+          args:
+            - >
+              pip install kafka-python requests python-dotenv;
+              echo "⏳ A aguardar Kafka estar disponível...";
+              for i in $(seq 1 30); do
+                python -c "from kafka import KafkaConsumer; import os; KafkaConsumer('notificacoes', bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS'), group_id='test-group', consumer_timeout_ms=1000)" && break;
+                echo "❌ Kafka ainda não disponível... tentativa $i";
+                sleep 3;
+              done;
+              echo "✅ Kafka pronto, iniciando consumidor";
+              python -u app/consumer.py
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - secretRef:
+                name: notificationservice-env
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notificationservice-env
+  namespace: agriroute
+type: Opaque
+stringData:
+  SMTP_USER: "agriroute.contacts@gmail.com"
+  SMTP_PASSWORD: "zmfa rvzk nflk ntcp"
+  POSTGRES_USER: "agriroute"
+  POSTGRES_PASSWORD: "agriroute2025"
+  POSTGRES_DB: "geral"
+  POSTGRES_HOST: "postgres_notifications"
+  POSTGRES_PORT: "5432"
+  MASTER_DB: "master_db"
+  SECRET_KEY: "secret_key"
+  ALGORITHM: "HS256"
+  TWILIO_ACCOUNT_SID: "ACba96a8ca5944d5719beacffd70ee42e7"
+  TWILIO_AUTH_TOKEN: "91712b907e70cf32cc35f01b5f97b910"
+  TWILIO_PHONE_NUMBER: "+18566198894"
+  KAFKA_BOOTSTRAP_SERVERS: kafka.agriroute.svc.cluster.local:9092
+  KONG_HOST: kong-proxy.agriroute.svc.cluster.local:8000

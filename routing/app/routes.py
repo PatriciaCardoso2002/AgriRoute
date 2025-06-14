@@ -13,6 +13,9 @@ import json
 import logging
 from dateutil import parser
 import pytz
+import os
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("routing")
@@ -21,7 +24,7 @@ def criar_kafka_producer():
     for tentativa in range(10):
         try:
             producer = KafkaProducer(
-                bootstrap_servers='kafka:9092',
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                 value_serializer=lambda v: json.dumps(v).encode('utf-8')
             )
             logger.info("✅ Kafka Producer conectado com sucesso")

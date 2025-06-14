@@ -5,13 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+KONG_HOST = os.getenv("KONG_HOST", "kong:8000")
+
+
 def carregar_politica(evento: str):
-    with open("policies.json") as f:
+    with open("app/policies.json") as f:
         politicas = json.load(f)
     return politicas.get(evento, {}).get("destinatarios", {})
 
 def enviar_via_endpoint(canal: str, payload: dict):
-    url = f"http://kong:8000/agriRoute/v1/notifications/{canal}"
+    url = f"http://{KONG_HOST}/agriRoute/v1/notifications/{canal}"
     api_key = os.getenv("API_KEY")
     print("Api key>", api_key)
 
